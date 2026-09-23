@@ -1,14 +1,17 @@
 import { StatusBar } from 'expo-status-bar'
 import { StyleSheet, Text, View } from 'react-native'
 import { colors } from './src/theme/colors'
+import { RoleProvider } from './src/context/RoleContext'
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Conecta+</Text>
-      <Text style={styles.subtitle}>Actividades y bienestar para adultos mayores</Text>
-      <StatusBar style="dark" />
-    </View>
+    <RoleProvider>
+      <View style={styles.container}>
+        <Text style={styles.title}>Conecta+</Text>
+        <Text style={styles.subtitle}>Actividades y bienestar para adultos mayores</Text>
+        <StatusBar style="dark" />
+      </View>
+    </RoleProvider>
   )
 }
 
