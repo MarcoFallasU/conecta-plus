@@ -1,10 +1,17 @@
 export const colors = {
   azul: '#2F5E5F',
+  azulOscuro: '#1F4243',
+  azulClaro: '#E4EEEC',
   terracota: '#E07A5F',
   amarillo: '#F2B94B',
   verde: '#8EAF8B',
+  verdeSuave: '#ECF2E9',
   crema: '#FFF7ED',
   grisTexto: '#4A4A4A',
+  grisMedio: '#6B6B6B',
   line: '#E7DCC9',
   blanco: '#FFFFFF',
+  error: '#B3261E',
+  errorOscuro: '#8C1D18',
+  errorClaro: '#FBE9E7',
 }
