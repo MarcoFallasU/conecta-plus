@@ -1,28 +1,18 @@
 import { StatusBar } from 'expo-status-bar'
-import { StyleSheet, Text, View } from 'react-native'
-import { colors } from './src/theme/colors'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { AppDataProvider } from './src/context/AppDataContext'
 import { RoleProvider } from './src/context/RoleContext'
+import { RootNavigator } from './src/navigation/RootNavigator'
 
 export default function App() {
   return (
-    <RoleProvider>
-      <View style={styles.container}>
-        <Text style={styles.title}>Conecta+</Text>
-        <Text style={styles.subtitle}>Actividades y bienestar para adultos mayores</Text>
-        <StatusBar style="dark" />
-      </View>
-    </RoleProvider>
+    <SafeAreaProvider>
+      <RoleProvider>
+        <AppDataProvider>
+          <RootNavigator />
+          <StatusBar style="dark" />
+        </AppDataProvider>
+      </RoleProvider>
+    </SafeAreaProvider>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.crema,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  title: { fontSize: 36, fontWeight: '800', color: colors.azul },
-  subtitle: { marginTop: 8, fontSize: 16, color: colors.grisTexto, textAlign: 'center' },
-})
