@@ -1,5 +1,4 @@
 import { StyleSheet } from 'react-native'
-import { colors } from '../theme/colors'
 import { borderWidth, fontWeight, radius } from '../theme/designSystem'
 import type { RoleDisplayTokens } from '../theme/roleDisplay'
 
@@ -15,13 +14,14 @@ export const createStyles = (display: RoleDisplayTokens) =>
       justifyContent: 'center',
       gap: display.spacing / 2,
     },
-    primary: { backgroundColor: colors.azul, borderColor: colors.azul },
-    secondary: { backgroundColor: colors.amarillo, borderColor: colors.amarillo },
-    outline: { backgroundColor: 'transparent', borderColor: colors.azul },
+    primary: { backgroundColor: display.colors.azul, borderColor: display.colors.azul },
+    secondary: { backgroundColor: display.colors.amarillo, borderColor: display.colors.amarillo },
+    outline: { backgroundColor: 'transparent', borderColor: display.colors.azul },
+    danger: { backgroundColor: display.colors.error, borderColor: display.colors.error },
     pressed: { opacity: 0.85 },
     disabled: { opacity: 0.6 },
     label: { fontWeight: fontWeight.bold },
-    labelPrimary: { color: colors.blanco },
-    labelSecondary: { color: colors.azulOscuro },
-    labelOutline: { color: colors.azul },
+    labelPrimary: { color: display.colors.blanco },
+    labelSecondary: { color: display.colors.azulOscuro },
+    labelOutline: { color: display.colors.azul },
   })

@@ -1,5 +1,5 @@
 import { TextInput, View, type TextInputProps } from 'react-native'
-import { colors } from '../theme/colors'
+import { useRoleDisplay } from '../theme/roleDisplay'
 import { useRoleStyles } from '../theme/useRoleStyles'
 import { AppText } from './AppText'
 import { createStyles } from './TextField.styles'
@@ -10,6 +10,7 @@ interface TextFieldProps extends Omit<TextInputProps, 'style'> {
 }
 
 export function TextField({ label, error, multiline, ...rest }: TextFieldProps) {
+  const display = useRoleDisplay()
   const styles = useRoleStyles(createStyles)
 
   return (
@@ -17,7 +18,7 @@ export function TextField({ label, error, multiline, ...rest }: TextFieldProps) 
       <AppText style={styles.label}>{label}</AppText>
       <TextInput
         accessibilityLabel={label}
-        placeholderTextColor={colors.grisMedio}
+        placeholderTextColor={display.colors.grisMedio}
         multiline={multiline}
         style={[styles.input, multiline && styles.inputMultiline, !!error && styles.inputError]}
         {...rest}

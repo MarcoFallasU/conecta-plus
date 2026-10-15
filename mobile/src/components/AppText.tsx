@@ -9,5 +9,6 @@ interface AppTextProps extends TextProps {
 
 export function AppText({ variant = 'body', style, ...rest }: AppTextProps) {
   const styles = useRoleStyles(createStyles)
-  return <Text style={[styles[variant], style]} {...rest} />
+  // El tamaño ya lo controla la preferencia de la app; se limita el de sistema para no desbordar.
+  return <Text style={[styles[variant], style]} maxFontSizeMultiplier={1.3} {...rest} />
 }

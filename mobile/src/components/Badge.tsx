@@ -3,7 +3,7 @@ import { useRoleStyles } from '../theme/useRoleStyles'
 import { AppText } from './AppText'
 import { createStyles } from './Badge.styles'
 
-export type BadgeTone = 'accent' | 'success' | 'neutral'
+export type BadgeTone = 'accent' | 'success' | 'neutral' | 'danger'
 
 interface BadgeProps {
   label: string
@@ -15,7 +15,7 @@ export function Badge({ label, tone = 'neutral' }: BadgeProps) {
 
   return (
     <View style={[styles.badge, styles[tone]]}>
-      <AppText variant="caption" style={styles.label}>
+      <AppText variant="caption" style={[styles.label, tone === 'danger' && styles.labelDanger]}>
         {label}
       </AppText>
     </View>

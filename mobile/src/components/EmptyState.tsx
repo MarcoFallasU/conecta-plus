@@ -1,6 +1,5 @@
 import { View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { colors } from '../theme/colors'
 import type { IconName } from '../theme/designSystem'
 import { useRoleDisplay } from '../theme/roleDisplay'
 import { useRoleStyles } from '../theme/useRoleStyles'
@@ -19,7 +18,7 @@ export function EmptyState({ icon, title, message }: EmptyStateProps) {
 
   return (
     <View style={styles.root}>
-      <Ionicons name={icon} size={Math.round(display.baseFontSize * 2.4)} color={colors.grisMedio} />
+      <Ionicons name={icon} size={Math.round(display.baseFontSize * 2.4)} color={display.colors.grisMedio} />
       <AppText variant="subtitle" style={styles.text}>
         {title}
       </AppText>

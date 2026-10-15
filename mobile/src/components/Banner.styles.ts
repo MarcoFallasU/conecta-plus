@@ -1,5 +1,4 @@
 import { StyleSheet } from 'react-native'
-import { colors } from '../theme/colors'
 import { radius } from '../theme/designSystem'
 import type { RoleDisplayTokens } from '../theme/roleDisplay'
 
@@ -12,11 +11,11 @@ export const createStyles = (display: RoleDisplayTokens) =>
       padding: display.spacing,
       borderRadius: radius.md,
     },
-    info: { backgroundColor: colors.azulClaro },
-    success: { backgroundColor: colors.verdeSuave },
-    error: { backgroundColor: colors.errorClaro },
+    info: { backgroundColor: display.colors.azulClaro },
+    success: { backgroundColor: display.colors.verdeSuave },
+    error: { backgroundColor: display.colors.errorClaro },
     text: { flex: 1 },
-    textInfo: { color: colors.azulOscuro },
-    textSuccess: { color: colors.azulOscuro },
-    textError: { color: colors.errorOscuro },
+    textInfo: { color: display.colors.azulOscuro },
+    textSuccess: { color: display.colors.azulOscuro },
+    textError: { color: display.colors.errorOscuro },
   })

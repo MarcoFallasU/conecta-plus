@@ -1,6 +1,5 @@
 import { Pressable, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { colors } from '../theme/colors'
 import { useRoleDisplay } from '../theme/roleDisplay'
 import { useRoleStyles } from '../theme/useRoleStyles'
 import { createStyles } from './StarRating.styles'
@@ -20,7 +19,7 @@ export function StarRating({ value, onChange }: StarRatingProps) {
   return (
     <View style={styles.row} accessibilityLabel={`Calificación: ${value} de 5`}>
       {STARS.map((star) => {
-        const icon = <Ionicons name={star <= value ? 'star' : 'star-outline'} size={size} color={colors.amarillo} />
+        const icon = <Ionicons name={star <= value ? 'star' : 'star-outline'} size={size} color={display.colors.amarillo} />
 
         return onChange ? (
           <Pressable

@@ -1,12 +1,11 @@
 import { StyleSheet } from 'react-native'
-import { colors } from '../theme/colors'
 import { borderWidth, radius, shadow } from '../theme/designSystem'
 import type { RoleDisplayTokens } from '../theme/roleDisplay'
 
 export const createStyles = (display: RoleDisplayTokens) =>
   StyleSheet.create({
     card: {
-      backgroundColor: colors.blanco,
+      backgroundColor: display.colors.blanco,
       borderRadius: radius.lg,
       ...shadow.card,
     },
@@ -14,11 +13,12 @@ export const createStyles = (display: RoleDisplayTokens) =>
     inner: {
       borderRadius: radius.lg,
       borderWidth: borderWidth.hairline,
-      borderColor: colors.line,
+      borderColor: display.colors.line,
       overflow: 'hidden',
     },
     innerHorizontal: { flexDirection: 'row' },
-    image: { backgroundColor: colors.azulClaro },
+    innerCancelled: { opacity: 0.75 },
+    image: { backgroundColor: display.colors.azulClaro },
     imageVertical: { width: '100%', height: display.cardImageSize },
     imageHorizontal: { width: display.cardImageSize, height: '100%' },
     body: { flex: 1, padding: display.spacing, gap: display.spacing / 2 },

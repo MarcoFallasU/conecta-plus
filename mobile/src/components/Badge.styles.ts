@@ -1,5 +1,4 @@
 import { StyleSheet } from 'react-native'
-import { colors } from '../theme/colors'
 import { borderWidth, fontWeight, radius } from '../theme/designSystem'
 import type { RoleDisplayTokens } from '../theme/roleDisplay'
 
@@ -13,8 +12,10 @@ export const createStyles = (display: RoleDisplayTokens) =>
       borderWidth: borderWidth.hairline,
       borderColor: 'transparent',
     },
-    accent: { backgroundColor: colors.amarillo },
-    success: { backgroundColor: colors.verdeSuave, borderColor: colors.verde },
-    neutral: { backgroundColor: colors.azulClaro },
-    label: { fontWeight: fontWeight.bold, color: colors.azulOscuro },
+    accent: { backgroundColor: display.colors.amarillo },
+    success: { backgroundColor: display.colors.verdeSuave, borderColor: display.colors.verde },
+    neutral: { backgroundColor: display.colors.azulClaro },
+    danger: { backgroundColor: display.colors.errorClaro, borderColor: display.colors.error },
+    label: { fontWeight: fontWeight.bold, color: display.colors.azulOscuro },
+    labelDanger: { color: display.colors.errorOscuro },
   })
