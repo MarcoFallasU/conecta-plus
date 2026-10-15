@@ -10,6 +10,7 @@ import { StarRating } from '../components/StarRating'
 import { TextField } from '../components/TextField'
 import { useAppData } from '../context/AppDataContext'
 import { useSessionUser } from '../context/RoleContext'
+import { attendanceKey } from '../data/types'
 import type { RootStackParamList } from '../navigation/types'
 import { useCan } from '../permissions/permissions'
 import { REVIEW_POINTS } from '../permissions/reputation'
@@ -21,7 +22,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Review'>
 
 export function ReviewScreen({ navigation, route }: Props) {
   const { user } = useSessionUser()
-  const { activities, enrollments, reviews, addReview } = useAppData()
+  const { activities, enrollments, attendance, reviews, addReview } = useAppData()
   const canReview = useCan('leave_review')
   const styles = useRoleStyles(createStyles)
   const [rating, setRating] = useState(0)
@@ -34,6 +35,7 @@ export function ReviewScreen({ navigation, route }: Props) {
     canReview &&
     isPast(activity.startsAt) &&
     (enrollments[activity.id] ?? []).includes(user.id) &&
+    attendance[attendanceKey(activity.id, user.id)] === 'asistio' &&
     !reviews.some((r) => r.activityId === activity.id && r.userId === user.id)
 
   if (!user || !activity || !allowed) {
@@ -42,7 +44,7 @@ export function ReviewScreen({ navigation, route }: Props) {
         <EmptyState
           icon="lock-closed-outline"
           title="No puedes reseñar esta actividad"
-          message="Solo puedes dejar una reseña en actividades finalizadas a las que asististe."
+          message="Solo puedes dejar una reseña en actividades finalizadas a las que confirmaste que asististe."
         />
       </Screen>
     )

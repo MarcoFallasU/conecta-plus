@@ -11,14 +11,15 @@ import type { Account } from '../data/types'
 import type { RootStackParamList } from '../navigation/types'
 import { useCan } from '../permissions/permissions'
 import { useRoleStyles } from '../theme/useRoleStyles'
-import { formatActivityDate } from '../utils/dates'
+import { attendanceKey } from '../data/types'
+import { formatActivityDate, isPast } from '../utils/dates'
 import { createStyles } from './AttendeesScreen.styles'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Attendees'>
 
 export function AttendeesScreen({ route }: Props) {
   const { user } = useSessionUser()
-  const { accounts, activities, enrollments } = useAppData()
+  const { accounts, activities, enrollments, attendance } = useAppData()
   const canManage = useCan('manage_attendees')
   const styles = useRoleStyles(createStyles)
 
@@ -29,6 +30,15 @@ export function AttendeesScreen({ route }: Props) {
         <EmptyState icon="lock-closed-outline" title="Sin acceso" message="Solo quien publicó el evento puede ver sus inscritos." />
       </Screen>
     )
+  }
+
+  const finished = isPast(activity.startsAt)
+  const statusBadge = (personId: string): { label: string; tone?: 'success' | 'neutral' } => {
+    if (!finished) return { label: 'Confirmado', tone: 'success' }
+    const answer = attendance[attendanceKey(activity.id, personId)]
+    if (answer === 'asistio') return { label: 'Asistió', tone: 'success' }
+    if (answer === 'no_asistio') return { label: 'No asistió' }
+    return { label: 'Sin responder' }
   }
 
   const attendees = (enrollments[activity.id] ?? [])
@@ -48,7 +58,7 @@ export function AttendeesScreen({ route }: Props) {
         <EmptyState icon="people-outline" title="Aún no hay inscritos" message="Cuando alguien se inscriba, aparecerá aquí." />
       ) : (
         attendees.map((person) => (
-          <PersonRow key={person.id} name={person.name} subtitle={ROLE_INFO[person.role].label} badge={{ label: 'Confirmado', tone: 'success' }} />
+          <PersonRow key={person.id} name={person.name} subtitle={ROLE_INFO[person.role].label} badge={statusBadge(person.id)} />
         ))
       )}
     </Screen>

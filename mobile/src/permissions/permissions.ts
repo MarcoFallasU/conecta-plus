@@ -12,11 +12,27 @@ export type Permission =
   | 'leave_review'
   | 'create_event'
   | 'manage_attendees'
+  | 'cancel_event'
   | 'feature_event'
+  | 'confirm_attendance'
+  | 'view_progress'
+  | 'edit_interests'
+  | 'manage_emergency_contacts'
+  | 'view_family_summary'
 
 // Capa 1: permisos que dependen únicamente del rol, sin condiciones adicionales.
 const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
-  adulto_mayor: ['view_activities', 'register_self', 'view_family', 'respond_family_requests', 'leave_review'],
+  adulto_mayor: [
+    'view_activities',
+    'register_self',
+    'view_family',
+    'respond_family_requests',
+    'leave_review',
+    'confirm_attendance',
+    'view_progress',
+    'edit_interests',
+    'manage_emergency_contacts',
+  ],
   cuidador: [
     'view_activities',
     'register_self',
@@ -25,6 +41,10 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'link_family_member',
     'recommend_activity',
     'leave_review',
+    'confirm_attendance',
+    'view_progress',
+    'edit_interests',
+    'view_family_summary',
   ],
   empresa: ['view_activities', 'feature_event'],
 }
@@ -36,6 +56,7 @@ const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 const CONDITIONAL_PERMISSIONS: Partial<Record<Permission, (user: SessionUser) => boolean>> = {
   create_event: canPublishEvents,
   manage_attendees: canPublishEvents,
+  cancel_event: canPublishEvents,
 }
 
 export function can(user: SessionUser | null, permission: Permission): boolean {
