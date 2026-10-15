@@ -1,5 +1,4 @@
 import { StyleSheet } from 'react-native'
-import { colors } from '../theme/colors'
 import { borderWidth, radius } from '../theme/designSystem'
 import type { RoleDisplayTokens } from '../theme/roleDisplay'
 
@@ -8,9 +7,9 @@ export const createStyles = (display: RoleDisplayTokens) =>
     suggestion: {
       gap: display.spacing / 2,
       padding: display.spacing,
-      backgroundColor: colors.blanco,
+      backgroundColor: display.colors.blanco,
       borderRadius: radius.lg,
       borderWidth: borderWidth.hairline,
-      borderColor: colors.line,
+      borderColor: display.colors.line,
     },
   })

@@ -12,10 +12,14 @@ export type RootStackParamList = {
   Attendees: { activityId: string }
   FamilyMember: { elderId: string }
   Review: { activityId: string }
+  Notices: undefined
+  Progress: { userId?: string } | undefined
+  EditProfile: undefined
 }
 
 export type TabParamList = {
   Home: undefined
+  Explore: { view?: 'list' | 'map'; stamp?: number } | undefined
   Agenda: undefined
   Family: undefined
   Profile: undefined

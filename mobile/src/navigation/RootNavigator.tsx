@@ -4,12 +4,14 @@ import { useSessionUser } from '../context/RoleContext'
 import { ActivityDetailScreen } from '../screens/ActivityDetailScreen'
 import { AttendeesScreen } from '../screens/AttendeesScreen'
 import { CreateEventScreen } from '../screens/CreateEventScreen'
+import { EditProfileScreen } from '../screens/EditProfileScreen'
 import { FamilyMemberScreen } from '../screens/FamilyMemberScreen'
 import { LoginScreen } from '../screens/LoginScreen'
+import { NoticesScreen } from '../screens/NoticesScreen'
+import { ProgressScreen } from '../screens/ProgressScreen'
 import { RegisterScreen } from '../screens/RegisterScreen'
 import { ReviewScreen } from '../screens/ReviewScreen'
 import { WelcomeScreen } from '../screens/WelcomeScreen'
-import { colors } from '../theme/colors'
 import { fontWeight, typeScale } from '../theme/designSystem'
 import { useRoleDisplay } from '../theme/roleDisplay'
 import { TabsNavigator } from './TabsNavigator'
@@ -22,14 +24,14 @@ export function RootNavigator() {
   const display = useRoleDisplay()
 
   const screenOptions: NativeStackNavigationOptions = {
-    headerStyle: { backgroundColor: colors.crema },
-    headerTintColor: colors.azul,
+    headerStyle: { backgroundColor: display.colors.crema },
+    headerTintColor: display.colors.azul,
     headerShadowVisible: false,
     headerTitleStyle: {
       fontSize: Math.round(display.baseFontSize * typeScale.subtitle),
       fontWeight: fontWeight.bold,
     },
-    contentStyle: { backgroundColor: colors.crema },
+    contentStyle: { backgroundColor: display.colors.crema },
   }
 
   return (
@@ -43,6 +45,9 @@ export function RootNavigator() {
             <Stack.Screen name="Attendees" component={AttendeesScreen} options={{ title: 'Inscritos' }} />
             <Stack.Screen name="FamilyMember" component={FamilyMemberScreen} options={{ title: 'Familiar' }} />
             <Stack.Screen name="Review" component={ReviewScreen} options={{ title: 'Dejar reseña' }} />
+            <Stack.Screen name="Notices" component={NoticesScreen} options={{ title: 'Mis avisos' }} />
+            <Stack.Screen name="Progress" component={ProgressScreen} options={{ title: 'Mi resumen' }} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Mis datos' }} />
           </>
         ) : (
           <>

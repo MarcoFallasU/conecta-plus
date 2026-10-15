@@ -14,6 +14,8 @@ import type { RootStackParamList } from '../navigation/types'
 import { useCan } from '../permissions/permissions'
 import { useRoleStyles } from '../theme/useRoleStyles'
 import { formatActivityDate, isPast } from '../utils/dates'
+import { openExternal, telUrl } from '../utils/links'
+import { greetingName } from '../utils/people'
 import { createStyles } from './FamilyMemberScreen.styles'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FamilyMember'>
@@ -22,6 +24,7 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
   const { user } = useSessionUser()
   const { accounts, activities, enrollments, links, recommendations, recommend } = useAppData()
   const canRecommend = useCan('recommend_activity')
+  const canViewSummary = useCan('view_family_summary')
   const styles = useRoleStyles(createStyles)
 
   const elder = accounts.find((a) => a.id === route.params.elderId)
@@ -36,7 +39,7 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
     )
   }
 
-  const upcoming = activities.filter((a) => !isPast(a.startsAt))
+  const upcoming = activities.filter((a) => !isPast(a.startsAt) && a.status === 'disponible')
   const elderActivities = upcoming.filter((a) => enrollments[a.id]?.includes(elder.id)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
   const suggestions = upcoming.filter((a) => !enrollments[a.id]?.includes(elder.id)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
   const alreadyRecommended = (activityId: string) =>
@@ -44,7 +47,19 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
 
   return (
     <Screen>
-      <PersonRow name={elder.name} subtitle={ROLE_INFO[elder.role].label} badge={{ label: 'Vinculado', tone: 'success' }} />
+      <PersonRow name={elder.name} subtitle={ROLE_INFO[elder.role].label} badge={{ label: 'Vinculado', tone: 'success' }}>
+        {canViewSummary && (
+          <Button
+            variant="secondary"
+            icon="stats-chart-outline"
+            label="Ver su resumen del mes"
+            onPress={() => navigation.navigate('Progress', { userId: elder.id })}
+          />
+        )}
+        {elder.profile.phone ? (
+          <Button variant="outline" icon="call-outline" label={`Llamar a ${greetingName(elder.name)}`} onPress={() => openExternal(telUrl(elder.profile.phone))} />
+        ) : null}
+      </PersonRow>
 
       <Section title={`Actividades de ${elder.name}`}>
         {elderActivities.length === 0 ? (

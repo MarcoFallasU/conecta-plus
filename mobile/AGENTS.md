@@ -54,6 +54,33 @@ carpetas ni módulos separados por rol.** Lo que cambia por rol es:
 - `src/components/` — componentes compartidos del design system.
 - `src/screens/` — una pantalla por flujo, igual para los tres roles.
 - `src/navigation/` — un único stack raíz + pestañas inferiores.
+- `src/context/PreferencesContext.tsx` — preferencias de accesibilidad del dispositivo
+  (tamaño de letra y alto contraste, guardadas en AsyncStorage). No cambian el flujo:
+  `useRoleDisplay()` las aplica sobre los tokens del rol, y `display.colors` entrega la
+  paleta activa. Los estilos leen colores **solo** de `display.colors`.
+- `src/data/` — tipos, zonas (`zones.ts`), categorías con ícono y datos semilla del mock.
+- `src/utils/` — lógica pura sin UI y sin estado: fechas, distancia, búsqueda y filtros
+  (`search.ts`), recomendaciones (`recommendations.ts`), avisos y recordatorios
+  (`notices.ts`), resumen de participación (`progress.ts`), enlaces externos
+  (`links.ts`) y lectura en voz alta (`speech.ts`). Al migrar a la API, estas funciones
+  pasan al backend o se alimentan de sus respuestas.
+
+### Experiencia del adulto mayor dentro del módulo compartido
+
+No hay un módulo aparte: el adulto mayor usa las mismas pantallas, adaptadas por tokens
+y permisos. Lo que lo distingue es:
+
+- **Tokens** (`roleDisplay.ts`): letra base de 20, botones de 56, tarjetas verticales con
+  imagen grande y poco texto. También es la densidad por defecto antes de iniciar sesión.
+- **Permisos de capa 1** exclusivos o casi exclusivos: `confirm_attendance`,
+  `view_progress`, `edit_interests`, `manage_emergency_contacts`
+  (`view_family_summary` lo tiene el cuidador para ver el resumen de su familiar).
+- **Flujos**: Inicio personalizado (avisos urgentes, próxima actividad, recomendadas,
+  accesos grandes), Buscar con filtros por categoría/fecha/cercanía y mapa, Agenda con
+  calendario, confirmación de asistencia, Mi resumen, Mis datos (zona, intereses,
+  contactos de emergencia) y Avisos.
+- **Confirmaciones**: toda acción que se puede hacer por error (cancelar inscripción,
+  llamar a emergencias, cancelar un evento) pasa por `ConfirmDialog`.
 
 ## Convenciones de código
 

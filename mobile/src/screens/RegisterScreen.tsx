@@ -10,7 +10,6 @@ import { TextField } from '../components/TextField'
 import type { Role } from '../context/RoleContext'
 import { useAppData } from '../context/AppDataContext'
 import { ROLES, ROLE_INFO } from '../data/roles'
-import { colors } from '../theme/colors'
 import { useRoleDisplay } from '../theme/roleDisplay'
 import { useRoleStyles } from '../theme/useRoleStyles'
 import { createStyles } from './RegisterScreen.styles'
@@ -61,12 +60,12 @@ export function RegisterScreen() {
               onPress={() => setRole(option)}
               style={({ pressed }) => [styles.option, selected && styles.optionSelected, pressed && styles.optionPressed]}
             >
-              <Ionicons name={info.icon} size={Math.round(display.baseFontSize * 1.8)} color={colors.azul} />
+              <Ionicons name={info.icon} size={Math.round(display.baseFontSize * 1.8)} color={display.colors.azul} />
               <View style={styles.optionText}>
                 <AppText variant="subtitle">{info.title}</AppText>
                 <AppText variant="caption">{info.description}</AppText>
               </View>
-              {selected && <Ionicons name="checkmark-circle" size={Math.round(display.baseFontSize * 1.5)} color={colors.azul} />}
+              {selected && <Ionicons name="checkmark-circle" size={Math.round(display.baseFontSize * 1.5)} color={display.colors.azul} />}
             </Pressable>
           )
         })}

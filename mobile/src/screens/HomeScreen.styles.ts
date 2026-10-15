@@ -3,7 +3,9 @@ import type { RoleDisplayTokens } from '../theme/roleDisplay'
 
 export const createStyles = (display: RoleDisplayTokens) =>
   StyleSheet.create({
-    header: { gap: display.spacing / 2 },
-    chipsScroll: { flexGrow: 0 },
-    chips: { gap: display.spacing / 2, paddingVertical: 2 },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: display.spacing },
+    headerTexts: { flex: 1, gap: display.spacing / 4 },
+    block: { gap: display.spacing },
+    tiles: { flexDirection: 'row', flexWrap: 'wrap', gap: display.spacing },
+    statsRow: { flexDirection: 'row', gap: display.spacing },
   })

@@ -1,5 +1,4 @@
 import { StyleSheet } from 'react-native'
-import { colors } from '../theme/colors'
 import { radius } from '../theme/designSystem'
 import type { RoleDisplayTokens } from '../theme/roleDisplay'
 
@@ -12,11 +11,12 @@ export const createStyles = (display: RoleDisplayTokens) => {
       width: heroSize,
       height: heroSize,
       borderRadius: radius.pill,
-      backgroundColor: colors.azulClaro,
+      backgroundColor: display.colors.azulClaro,
       alignItems: 'center',
       justifyContent: 'center',
     },
     centered: { textAlign: 'center' },
+    sizePicker: { gap: display.spacing / 2 },
     actions: { gap: display.spacing },
   })
 }
