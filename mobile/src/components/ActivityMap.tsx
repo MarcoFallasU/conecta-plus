@@ -188,7 +188,7 @@ export function ActivityMap({ pins, origin, selectedId, onSelect }: ActivityMapP
                 key={pin.id}
                 accessibilityRole="button"
                 accessibilityLabel={pin.label}
-                accessibilityState={{ selected }}
+                aria-selected={selected}
                 onPress={() => onSelect(pin.id)}
                 style={[
                   styles.pin,

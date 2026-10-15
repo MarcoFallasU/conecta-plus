@@ -33,7 +33,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange }:
           <Pressable
             key={option.value}
             accessibilityRole="radio"
-            accessibilityState={{ checked: selected }}
+            aria-checked={selected}
             accessibilityLabel={option.label}
             onPress={() => onChange(option.value)}
             style={({ pressed }) => [

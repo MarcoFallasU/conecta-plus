@@ -70,7 +70,7 @@ export function MonthCalendar({ month, onChangeMonth, marked, selected, onSelect
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={label}
-                  accessibilityState={{ selected: isSelected }}
+                  aria-selected={isSelected}
                   onPress={() => onSelect(key)}
                   style={({ pressed }) => [
                     styles.day,
