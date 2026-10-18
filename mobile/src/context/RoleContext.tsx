@@ -5,6 +5,7 @@ export type Role = 'adulto_mayor' | 'cuidador' | 'empresa'
 export interface SessionUser {
   id: string
   name: string
+  email: string
   role: Role
   reputationScore: number
 }

@@ -4,6 +4,8 @@ export interface RoleDisplayTokens {
   baseFontSize: number
   cardImageSize: number
   cardMaxTextLines: number
+  cardLayout: 'vertical' | 'horizontal'
+  showCardDetails: boolean
   touchTargetSize: number
   spacing: number
 }
@@ -16,6 +18,8 @@ const ROLE_DISPLAY: Record<Role, RoleDisplayTokens> = {
     baseFontSize: 20,
     cardImageSize: 160,
     cardMaxTextLines: 2,
+    cardLayout: 'vertical',
+    showCardDetails: false,
     touchTargetSize: 56,
     spacing: 16,
   },
@@ -23,6 +27,8 @@ const ROLE_DISPLAY: Record<Role, RoleDisplayTokens> = {
     baseFontSize: 15,
     cardImageSize: 96,
     cardMaxTextLines: 3,
+    cardLayout: 'horizontal',
+    showCardDetails: true,
     touchTargetSize: 44,
     spacing: 12,
   },
@@ -30,6 +36,8 @@ const ROLE_DISPLAY: Record<Role, RoleDisplayTokens> = {
     baseFontSize: 15,
     cardImageSize: 96,
     cardMaxTextLines: 3,
+    cardLayout: 'horizontal',
+    showCardDetails: true,
     touchTargetSize: 44,
     spacing: 12,
   },

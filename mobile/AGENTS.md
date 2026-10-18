@@ -44,6 +44,28 @@ carpetas ni módulos separados por rol.** Lo que cambia por rol es:
 - `src/theme/roleDisplay.ts` — tokens de densidad/tamaño por rol (tamaño de fuente
   base, tamaño de imagen en cards, líneas de texto, tamaño de botones táctiles).
 - `src/theme/colors.ts` — paleta compartida (ya existe, es la misma para los 3 roles).
+- `src/theme/designSystem.ts` — escalas globales del design system (radios, bordes,
+  pesos, escala tipográfica, sombras). Los tamaños de texto son múltiplos del
+  `baseFontSize` del rol.
+- `src/permissions/reputation.ts` — umbrales y puntos de reputación.
+- `src/context/AppDataContext.tsx` — mock del backend (cuentas, actividades,
+  inscripciones, vínculos, reseñas). Se reemplaza por la API; las pantallas solo
+  lo consumen vía `useAppData()`.
+- `src/components/` — componentes compartidos del design system.
+- `src/screens/` — una pantalla por flujo, igual para los tres roles.
+- `src/navigation/` — un único stack raíz + pestañas inferiores.
+
+## Convenciones de código
+
+- **Cada pantalla y cada componente tiene su `.styles.ts`** junto al `.tsx`
+  (`Foo.tsx` + `Foo.styles.ts`). Exporta `createStyles(display)` y se consume con
+  `useRoleStyles(createStyles)`. No se escriben `StyleSheet.create` dentro de los `.tsx`.
+- Los valores visuales salen del design system (`colors`, `designSystem`,
+  `roleDisplay`); no se hardcodean colores ni tamaños sueltos en pantallas.
+- Las pestañas inferiores son las mismas para todos los roles; una pestaña solo se
+  oculta si el rol no tiene el permiso que la habilita (hoy: `view_family`).
+- Las acciones y secciones dentro de cada pantalla se muestran/ocultan con `useCan`,
+  nunca con `if (role === ...)` en la pantalla.
 
 ## Permisos granulares condicionados por reputación
 
