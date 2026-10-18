@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Valores controlados desde el código (SQLite se maneja mejor con String):
+// role: adulto_mayor | cuidador | empresa
+// activity.status: disponible | llena | cancelada
+// enrollment.status: confirmado | asistio | no_asistio
+// familyLink.status: pending | active
+// orgType: municipalidad | asociacion | centro_comunitario | gimnasio | clinica | academia | otro
+// notification.type: recordatorio | asistencia | recomendacion | vinculo
+// reputationEvent.type: review | photo | like
+
+model User {
+  id                 String   @id // uid de Firebase Auth
+  name               String
+  email              String   @unique
+  role               String
+  reputationScore    Int      @default(0)
+  photoUrl           String?
+  lat                Float?
+  lng                Float?
+  interests          Json     @default("[]") // categoryId[]
+  emergencyContacts  Json? // [{ name, phone, relation }]
+  birthYear          Int?
+  pushEnabled        Boolean  @default(true)
+  reminderDaysBefore Int      @default(1)
+  monthlySummary     Boolean  @default(true)
+  createdAt          DateTime @default(now())
+}
+
+model Device {
+  id        String   @id // fcmToken
+  userId    String
+  platform  String // android | ios
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Organization {
+  id           String  @id // uid del usuario empresa
+  orgType      String
+  description  String
+  contactPhone String
+  contactEmail String
+  address      String
+  verified     Boolean @default(false)
+}
+
+model Category {
+  id    String @id
+  name  String
+  icon  String
+  order Int
+}
+
+model Activity {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  categoryId    String
+  categoryName  String
+  startsAt      DateTime
+  endsAt        DateTime?
+  placeName     String
+  placeAddress  String
+  placeLat      Float
+  placeLng      Float
+  placeGeohash  String
+  imageUrl      String
+  createdBy     String
+  createdByName String
+  capacity      Int? // null = sin límite
+  enrolledCount Int       @default(0)
+  status        String    @default("disponible")
+  featured      Boolean   @default(false)
+  featuredUntil DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([startsAt])
+  @@index([categoryId, startsAt])
+  @@index([placeGeohash])
+  @@index([createdBy])
+}
+
+model Enrollment {
+  id               String   @id // `${activityId}_${userId}`
+  activityId       String
+  userId           String
+  enrolledBy       String
+  status           String   @default("confirmado")
+  activityStartsAt DateTime
+  googleEventId    String?
+  enrolledAt       DateTime @default(now())
+
+  @@index([userId, activityStartsAt])
+  @@index([activityId])
+}
+
+model FamilyLink {
+  id          String    @id // `${caregiverId}_${elderId}`
+  caregiverId String
+  elderId     String
+  status      String    @default("pending")
+  requestedBy String
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  @@index([caregiverId])
+  @@index([elderId])
+}
+
+model Recommendation {
+  id         String   @id // `${activityId}_${fromUserId}_${toUserId}`
+  activityId String
+  fromUserId String
+  toUserId   String
+  createdAt  DateTime @default(now())
+
+  @@index([toUserId])
+  @@index([activityId])
+}
+
+model Review {
+  id         String   @id // `${activityId}_${userId}`
+  activityId String
+  userId     String
+  userName   String
+  rating     Int // 1 a 5, se valida en el código
+  comment    String
+  createdAt  DateTime @default(now())
+
+  @@index([activityId])
+  @@index([userId])
+}
+
+model ReputationEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  points    Int
+  refId     String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model FeaturedPurchase {
+  id         String   @id @default(cuid())
+  activityId String
+  orgId      String
+  days       Int
+  amountUsd  Float
+  startsAt   DateTime
+  endsAt     DateTime
+  status     String   @default("simulado") // simulado | pagado
+  createdAt  DateTime @default(now())
+
+  @@index([activityId])
+  @@index([orgId])
+}
+
+model Notification {
+  id           String    @id @default(cuid())
+  userId       String
+  type         String
+  activityId   String?
+  title        String
+  body         String
+  scheduledFor DateTime
+  sentAt       DateTime?
+  read         Boolean   @default(false)
+
+  @@index([userId, scheduledFor])
+}
+
+model EventPhoto {
+  id         String   @id @default(cuid())
+  activityId String
+  userId     String
+  imageUrl   String
+  caption    String?
+  likeCount  Int      @default(0)
+  status     String   @default("visible") // visible | oculta
+  createdAt  DateTime @default(now())
+
+  @@index([activityId])
+  @@index([userId])
+}
+
+model PhotoLike {
+  id           String   @id // `${photoId}_${userId}`
+  photoId      String
+  userId       String
+  photoOwnerId String
+  createdAt    DateTime @default(now())
+
+  @@index([photoId])
+}
+
+model Report {
+  id         String    @id @default(cuid())
+  targetType String // activity | photo | review | user
+  targetId   String
+  reportedBy String
+  reason     String
+  status     String    @default("abierto") // abierto | resuelto | descartado
+  resolvedBy String?
+  resolution String?
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([status])
+}
+
+model ActivityStats {
+  id                  String   @id // = activityId
+  organizerId         String
+  impressions         Int      @default(0)
+  views               Int      @default(0)
+  featuredImpressions Int      @default(0)
+  featuredViews       Int      @default(0)
+  enrolled            Int      @default(0)
+  attended            Int      @default(0)
+  noShow              Int      @default(0)
+  updatedAt           DateTime @updatedAt
+
+  @@index([organizerId])
+}
+
+model MonthlyReport {
+  id                  String   @id // `${ownerId}_${yyyy-MM}`
+  ownerId             String
+  kind                String // usuario | organizacion
+  month               String // yyyy-MM
+  enrolled            Int      @default(0)
+  attended            Int      @default(0)
+  attendanceRate      Float    @default(0)
+  byCategory          Json     @default("{}")
+  totalAttendees      Int?
+  activitiesPublished Int?
+  generatedAt         DateTime @default(now())
+
+  @@index([ownerId])
+}
+
+model ZoneSupply {
+  id            String @id // `${geohash5}_${yyyy-MM}`
+  geohash       String
+  month         String
+  activities    Int    @default(0)
+  enrollments   Int    @default(0)
+  byCategory    Json   @default("{}")
+  byWeekdayHour Json   @default("{}")
+
+  @@index([geohash, month])
+}
+
+model CalendarSync {
+  id           String    @id // userId
+  provider     String    @default("google")
+  enabled      Boolean   @default(false)
+  calendarId   String
+  lastSyncedAt DateTime?
+}

@@ -2,6 +2,12 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const sequelize = require('./config/database');
+const prisma = require('./src/prisma')
+
+app.get('/categories', async (req, res) => {
+  const categories = await prisma.category.findMany({ orderBy: { order: 'asc' } })
+  res.json(categories)
+})
 
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN }));
