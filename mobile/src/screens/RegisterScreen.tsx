@@ -31,8 +31,10 @@ export function RegisterScreen() {
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<FormErrors>({})
   const [serverError, setServerError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    if (loading) return
     const next: FormErrors = {}
     if (name.trim().length < 2) next.name = 'Escribe tu nombre.'
     if (!/^\S+@\S+\.\S+$/.test(email.trim())) next.email = 'Escribe un correo válido.'
@@ -41,7 +43,9 @@ export function RegisterScreen() {
     setServerError('')
     if (Object.keys(next).length > 0) return
 
-    const result = register({ name, email, password, role })
+    setLoading(true)
+    const result = await register({ name, email, password, role })
+    setLoading(false)
     if (!result.ok) setServerError(result.message)
   }
 
@@ -97,7 +101,7 @@ export function RegisterScreen() {
           autoCapitalize="none"
         />
         {serverError ? <Banner tone="error">{serverError}</Banner> : null}
-        <Button label="Crear cuenta" icon="checkmark-circle-outline" onPress={handleSubmit} />
+        <Button label={loading ? 'Creando cuenta…' : 'Crear cuenta'} icon="checkmark-circle-outline" onPress={handleSubmit} />
       </View>
     </Screen>
   )
