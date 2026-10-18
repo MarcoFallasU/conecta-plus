@@ -30,6 +30,7 @@ model User {
   pushEnabled        Boolean  @default(true)
   reminderDaysBefore Int      @default(1)
   monthlySummary     Boolean  @default(true)
+  passwordHash       String   @default("")
   createdAt          DateTime @default(now())
 }
 
