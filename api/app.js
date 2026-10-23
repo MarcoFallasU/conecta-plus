@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const prisma = require('./src/prisma');
+const { createGoogle } = require('./src/services/google');
+const { createGoogleAuthRouter } = require('./src/routes/googleAuth');
 
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN }));
@@ -9,6 +11,8 @@ app.use(express.json());
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
+const google = createGoogle();
+app.use('/api/auth/google', createGoogleAuthRouter({ prisma, google }));
 app.use('/api/auth', require('./src/routes/auth'));
 
 app.get('/api/categories', async (req, res) => {

@@ -31,6 +31,7 @@ model User {
   reminderDaysBefore Int      @default(1)
   monthlySummary     Boolean  @default(true)
   passwordHash       String   @default("")
+  googleSub          String?  @unique // id estable de la cuenta de Google
   createdAt          DateTime @default(now())
 }
 
