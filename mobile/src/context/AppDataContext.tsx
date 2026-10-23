@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useSessionUser, type Role, type SessionUser } from './RoleContext'
 import {
   attendanceKey,
@@ -21,6 +21,7 @@ import {
 } from '../data/seed'
 import { getZone } from '../data/zones'
 import { REVIEW_POINTS } from '../permissions/reputation'
+import { api, tokenStorage } from '../services/apiClient'
 import { isPast } from '../utils/dates'
 
 interface ActionResult {
@@ -42,6 +43,19 @@ interface NewActivity {
 
 type ProfilePatch = Partial<UserProfile> & { name?: string }
 
+interface ApiUser {
+  id: string
+  name: string
+  email: string
+  role: Role
+  reputationScore: number
+}
+
+interface AuthResponse {
+  token: string
+  user: ApiUser
+}
+
 interface AppDataValue {
   accounts: Account[]
   activities: Activity[]
@@ -51,10 +65,12 @@ interface AppDataValue {
   recommendations: Recommendation[]
   reviews: Review[]
   dismissedNotices: string[]
-  login: (email: string, password: string) => boolean
+  // true mientras se revisa si hay una sesión guardada al abrir la app.
+  restoring: boolean
+  login: (email: string, password: string) => Promise<ActionResult>
   loginAs: (accountId: string) => void
-  register: (input: { name: string; email: string; password: string; role: Role }) => ActionResult
-  logout: () => void
+  register: (input: { name: string; email: string; password: string; role: Role }) => Promise<ActionResult>
+  logout: () => Promise<void>
   updateProfile: (userId: string, patch: ProfilePatch) => void
   enroll: (activityId: string, userId: string) => ActionResult
   unenroll: (activityId: string, userId: string) => void
@@ -76,6 +92,10 @@ function toSession(account: Account): SessionUser {
   return { id: account.id, name: account.name, email: account.email, role: account.role, reputationScore: account.reputationScore }
 }
 
+function apiToSession(u: ApiUser): SessionUser {
+  return { id: u.id, name: u.name, email: u.email, role: u.role, reputationScore: u.reputationScore }
+}
+
 function sameEmail(a: string, b: string) {
   return a.trim().toLowerCase() === b.trim().toLowerCase()
 }
@@ -84,8 +104,16 @@ function emptyProfile(): UserProfile {
   return { zoneId: null, interests: [], birthYear: null, phone: '', emergencyContacts: [] }
 }
 
-// Mock del backend: en producción estos datos, la autenticación y el puntaje de
-// reputación viven en la API, y cada acción se revalida allí.
+// Una persona que entra por la API todavía no tiene perfil en el servidor (zona,
+// intereses, contactos): se le crea uno vacío en la copia local para que "Mis datos"
+// y el resto de las pantallas funcionen mientras esos módulos se migran.
+function accountFromApi(u: ApiUser): Account {
+  return { ...apiToSession(u), password: '', profile: emptyProfile() }
+}
+
+// Autenticación: usa la API real (/auth/login, /auth/register, /auth/me).
+// El resto de los datos (actividades, vínculos, reseñas, perfil) sigue siendo un mock
+// hasta que cada módulo se migre a la API, que debe revalidar cada acción.
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const { user, setUser } = useSessionUser()
   const [accounts, setAccounts] = useState(SEED_ACCOUNTS)
@@ -96,38 +124,72 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [recommendations, setRecommendations] = useState(SEED_RECOMMENDATIONS)
   const [reviews, setReviews] = useState(SEED_REVIEWS)
   const [dismissedNotices, setDismissedNotices] = useState<string[]>([])
+  const [restoring, setRestoring] = useState(true)
 
-  function login(email: string, password: string) {
-    const account = accounts.find((a) => sameEmail(a.email, email) && a.password === password)
-    if (!account) return false
-    setUser(toSession(account))
-    return true
+  // Inicia la sesión con una persona que viene de la API y garantiza su copia local.
+  function startSession(apiUser: ApiUser) {
+    setAccounts((prev) => (prev.some((a) => a.id === apiUser.id) ? prev : [...prev, accountFromApi(apiUser)]))
+    setUser(apiToSession(apiUser))
+  }
+
+  // Al abrir la app, si hay un token guardado se recupera la sesión.
+  useEffect(() => {
+    let cancelled = false
+    async function restore() {
+      try {
+        const token = await tokenStorage.get()
+        if (!token) return
+        const { user: apiUser } = await api.get<{ user: ApiUser }>('/auth/me')
+        if (!cancelled) startSession(apiUser)
+      } catch {
+        await tokenStorage.clear()
+      } finally {
+        if (!cancelled) setRestoring(false)
+      }
+    }
+    restore()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function login(email: string, password: string): Promise<ActionResult> {
+    try {
+      const { token, user: apiUser } = await api.post<AuthResponse>('/auth/login', { email, password })
+      await tokenStorage.set(token)
+      startSession(apiUser)
+      return { ok: true, message: '' }
+    } catch (e) {
+      return { ok: false, message: e instanceof Error ? e.message : 'No se pudo iniciar sesión.' }
+    }
   }
 
   function loginAs(accountId: string) {
     const account = accounts.find((a) => a.id === accountId)
-    if (account) setUser(toSession(account))
-  }
-
-  function register(input: { name: string; email: string; password: string; role: Role }): ActionResult {
-    if (accounts.some((a) => sameEmail(a.email, input.email))) {
-      return { ok: false, message: 'Ya existe una cuenta con ese correo.' }
-    }
-    const account: Account = {
-      id: `u-${Date.now()}`,
-      name: input.name.trim(),
-      email: input.email.trim(),
-      password: input.password,
-      role: input.role,
-      reputationScore: 0,
-      profile: emptyProfile(),
-    }
-    setAccounts((prev) => [...prev, account])
+    if (!account) return
+    tokenStorage.clear() // las cuentas de demostración no usan token
     setUser(toSession(account))
-    return { ok: true, message: '' }
   }
 
-  function logout() {
+  async function register(input: {
+    name: string
+    email: string
+    password: string
+    role: Role
+  }): Promise<ActionResult> {
+    try {
+      const { token, user: apiUser } = await api.post<AuthResponse>('/auth/register', input)
+      await tokenStorage.set(token)
+      startSession(apiUser)
+      return { ok: true, message: '' }
+    } catch (e) {
+      return { ok: false, message: e instanceof Error ? e.message : 'No se pudo crear la cuenta.' }
+    }
+  }
+
+  async function logout() {
+    await tokenStorage.clear()
     setUser(null)
   }
 
@@ -245,6 +307,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         recommendations,
         reviews,
         dismissedNotices,
+        restoring,
         login,
         loginAs,
         register,

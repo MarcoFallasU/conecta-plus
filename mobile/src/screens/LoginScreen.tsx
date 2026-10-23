@@ -18,9 +18,15 @@ export function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  function handleSubmit() {
-    if (!login(email, password)) setError('Correo o contraseña incorrectos.')
+  async function handleSubmit() {
+    if (loading) return
+    setError('')
+    setLoading(true)
+    const result = await login(email, password)
+    setLoading(false)
+    if (!result.ok) setError(result.message)
   }
 
   return (
@@ -37,7 +43,7 @@ export function LoginScreen() {
         />
         <TextField label="Contraseña" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" />
         {error ? <Banner tone="error">{error}</Banner> : null}
-        <Button label="Entrar" icon="log-in-outline" onPress={handleSubmit} />
+        <Button label={loading ? 'Entrando…' : 'Entrar'} icon="log-in-outline" onPress={handleSubmit} />
       </View>
 
       <Section title="Cuentas de demostración">
