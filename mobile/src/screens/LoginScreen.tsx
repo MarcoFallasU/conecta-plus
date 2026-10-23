@@ -1,49 +1,60 @@
 import { useState } from 'react'
 import { View } from 'react-native'
+import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { AppText } from '../components/AppText'
 import { Banner } from '../components/Banner'
 import { Button } from '../components/Button'
 import { Screen } from '../components/Screen'
 import { Section } from '../components/Section'
-import { TextField } from '../components/TextField'
 import { useAppData } from '../context/AppDataContext'
 import { ROLE_INFO } from '../data/roles'
 import { DEMO_LOGINS } from '../data/seed'
+import type { RootStackParamList } from '../navigation/types'
 import { useRoleStyles } from '../theme/useRoleStyles'
 import { createStyles } from './LoginScreen.styles'
 
-export function LoginScreen() {
-  const { login, loginAs } = useAppData()
-  const styles = useRoleStyles(createStyles)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+type Props = NativeStackScreenProps<RootStackParamList, 'Login'>
 
-  async function handleSubmit() {
+interface Notice {
+  tone: 'info' | 'error'
+  message: string
+  offerSignUp: boolean
+}
+
+export function LoginScreen({ navigation }: Props) {
+  const { signInWithGoogle, loginAs } = useAppData()
+  const styles = useRoleStyles(createStyles)
+  const [loading, setLoading] = useState(false)
+  const [notice, setNotice] = useState<Notice | null>(null)
+
+  async function handleGoogle() {
     if (loading) return
-    setError('')
+    setNotice(null)
     setLoading(true)
-    const result = await login(email, password)
+    const result = await signInWithGoogle()
     setLoading(false)
-    if (!result.ok) setError(result.message)
+    if (result.ok) return
+    setNotice({
+      tone: result.error === 'cancelled' || result.error === 'no_account' ? 'info' : 'error',
+      message: result.message,
+      offerSignUp: result.error === 'no_account',
+    })
   }
 
   return (
     <Screen>
       <View style={styles.form}>
-        <TextField
-          label="Correo electrónico"
-          value={email}
-          onChangeText={setEmail}
-          placeholder="nombre@correo.com"
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
+        <AppText>Entra con tu cuenta de Google. No necesitas recordar ninguna contraseña.</AppText>
+        <Button
+          label={loading ? 'Abriendo Google…' : 'Continuar con Google'}
+          icon="logo-google"
+          disabled={loading}
+          onPress={handleGoogle}
         />
-        <TextField label="Contraseña" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" />
-        {error ? <Banner tone="error">{error}</Banner> : null}
-        <Button label={loading ? 'Entrando…' : 'Entrar'} icon="log-in-outline" onPress={handleSubmit} />
+        {notice ? <Banner tone={notice.tone}>{notice.message}</Banner> : null}
+        {notice?.offerSignUp ? (
+          <Button variant="secondary" icon="person-add-outline" label="Crear mi cuenta" onPress={() => navigation.navigate('Register')} />
+        ) : null}
       </View>
 
       <Section title="Cuentas de demostración">

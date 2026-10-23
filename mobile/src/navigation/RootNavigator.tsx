@@ -1,5 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack'
+import { LoadingState } from '../components/LoadingState'
+import { useAppData } from '../context/AppDataContext'
 import { useSessionUser } from '../context/RoleContext'
 import { ActivityDetailScreen } from '../screens/ActivityDetailScreen'
 import { AttendeesScreen } from '../screens/AttendeesScreen'
@@ -21,6 +23,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>()
 
 export function RootNavigator() {
   const { user } = useSessionUser()
+  const { restoring } = useAppData()
   const display = useRoleDisplay()
 
   const screenOptions: NativeStackNavigationOptions = {
@@ -33,6 +36,9 @@ export function RootNavigator() {
     },
     contentStyle: { backgroundColor: display.colors.crema },
   }
+
+  // Mientras se revisa si hay una sesión guardada no se muestra la bienvenida (evita el parpadeo).
+  if (restoring) return <LoadingState message="Abriendo Conecta+…" />
 
   return (
     <NavigationContainer>

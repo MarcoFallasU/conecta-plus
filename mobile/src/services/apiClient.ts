@@ -2,7 +2,7 @@ import { Platform } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
 
 // Incluye el prefijo /api, por ejemplo: http://localhost:4000/api
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000/api'
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000/api'
 const TOKEN_KEY = 'auth_token'
 
 // En web se usa localStorage; en celular, almacenamiento seguro del sistema.
@@ -34,7 +34,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   let res: Response
   try {
-    res = await fetch(`${BASE_URL}${path}`, {
+    res = await fetch(`${API_BASE_URL}${path}`, {
       ...init,
       headers: {
         'Content-Type': 'application/json',

@@ -22,6 +22,7 @@ import {
 import { getZone } from '../data/zones'
 import { REVIEW_POINTS } from '../permissions/reputation'
 import { api, tokenStorage } from '../services/apiClient'
+import { signInWithGoogle as googleSignIn, type GoogleSignInError } from '../services/googleAuth'
 import { isPast } from '../utils/dates'
 
 interface ActionResult {
@@ -51,10 +52,9 @@ interface ApiUser {
   reputationScore: number
 }
 
-interface AuthResponse {
-  token: string
-  user: ApiUser
-}
+// Resultado de intentar entrar con Google; `error` permite a la pantalla reaccionar
+// (por ejemplo, ofrecer crear la cuenta cuando todavía no existe).
+type GoogleOutcome = ActionResult & { error?: GoogleSignInError }
 
 interface AppDataValue {
   accounts: Account[]
@@ -67,9 +67,9 @@ interface AppDataValue {
   dismissedNotices: string[]
   // true mientras se revisa si hay una sesión guardada al abrir la app.
   restoring: boolean
-  login: (email: string, password: string) => Promise<ActionResult>
+  // Única forma real de entrar: con Google. Con `role` crea la cuenta si no existe.
+  signInWithGoogle: (options?: { role?: Role; name?: string }) => Promise<GoogleOutcome>
   loginAs: (accountId: string) => void
-  register: (input: { name: string; email: string; password: string; role: Role }) => Promise<ActionResult>
   logout: () => Promise<void>
   updateProfile: (userId: string, patch: ProfilePatch) => void
   enroll: (activityId: string, userId: string) => ActionResult
@@ -111,7 +111,7 @@ function accountFromApi(u: ApiUser): Account {
   return { ...apiToSession(u), password: '', profile: emptyProfile() }
 }
 
-// Autenticación: usa la API real (/auth/login, /auth/register, /auth/me).
+// Autenticación: usa la API real (inicio de sesión con Google y /auth/me).
 // El resto de los datos (actividades, vínculos, reseñas, perfil) sigue siendo un mock
 // hasta que cada módulo se migre a la API, que debe revalidar cada acción.
 export function AppDataProvider({ children }: { children: ReactNode }) {
@@ -154,15 +154,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function login(email: string, password: string): Promise<ActionResult> {
-    try {
-      const { token, user: apiUser } = await api.post<AuthResponse>('/auth/login', { email, password })
-      await tokenStorage.set(token)
-      startSession(apiUser)
-      return { ok: true, message: '' }
-    } catch (e) {
-      return { ok: false, message: e instanceof Error ? e.message : 'No se pudo iniciar sesión.' }
-    }
+  async function signInWithGoogle(options?: { role?: Role; name?: string }): Promise<GoogleOutcome> {
+    const result = await googleSignIn(options)
+    if (!result.ok) return { ok: false, message: result.message, error: result.error }
+    await tokenStorage.set(result.token)
+    startSession(result.user)
+    return { ok: true, message: '' }
   }
 
   function loginAs(accountId: string) {
@@ -170,22 +167,6 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     if (!account) return
     tokenStorage.clear() // las cuentas de demostración no usan token
     setUser(toSession(account))
-  }
-
-  async function register(input: {
-    name: string
-    email: string
-    password: string
-    role: Role
-  }): Promise<ActionResult> {
-    try {
-      const { token, user: apiUser } = await api.post<AuthResponse>('/auth/register', input)
-      await tokenStorage.set(token)
-      startSession(apiUser)
-      return { ok: true, message: '' }
-    } catch (e) {
-      return { ok: false, message: e instanceof Error ? e.message : 'No se pudo crear la cuenta.' }
-    }
   }
 
   async function logout() {
@@ -308,9 +289,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         reviews,
         dismissedNotices,
         restoring,
-        login,
+        signInWithGoogle,
         loginAs,
-        register,
         logout,
         updateProfile,
         enroll,

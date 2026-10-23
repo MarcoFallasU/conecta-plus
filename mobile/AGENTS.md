@@ -59,6 +59,11 @@ carpetas ni módulos separados por rol.** Lo que cambia por rol es:
   `useRoleDisplay()` las aplica sobre los tokens del rol, y `display.colors` entrega la
   paleta activa. Los estilos leen colores **solo** de `display.colors`.
 - `src/data/` — tipos, zonas (`zones.ts`), categorías con ícono y datos semilla del mock.
+- `src/services/` — acceso a la API: `apiClient.ts` (peticiones y token de sesión en
+  almacenamiento seguro) y `googleAuth.ts` (inicio de sesión con Google). **Entrar a la
+  app es solo con Google** (`useAppData().signInWithGoogle`): no hay correo ni contraseña.
+  La API habla con Google y la app recibe un código de un solo uso (PKCE); ver
+  `api/README.md`. Las cuentas de demostración (`loginAs`) no usan la API.
 - `src/utils/` — lógica pura sin UI y sin estado: fechas, distancia, búsqueda y filtros
   (`search.ts`), recomendaciones (`recommendations.ts`), avisos y recordatorios
   (`notices.ts`), resumen de participación (`progress.ts`), enlaces externos

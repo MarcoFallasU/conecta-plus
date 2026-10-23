@@ -14,38 +14,36 @@ import { useRoleDisplay } from '../theme/roleDisplay'
 import { useRoleStyles } from '../theme/useRoleStyles'
 import { createStyles } from './RegisterScreen.styles'
 
-interface FormErrors {
-  name?: string
-  email?: string
-  password?: string
+interface Notice {
+  tone: 'info' | 'error'
+  message: string
 }
 
 export function RegisterScreen() {
-  const { register } = useAppData()
+  const { signInWithGoogle } = useAppData()
   const display = useRoleDisplay()
   const styles = useRoleStyles(createStyles)
   const [role, setRole] = useState<Role>('adulto_mayor')
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [errors, setErrors] = useState<FormErrors>({})
-  const [serverError, setServerError] = useState('')
+  const [organization, setOrganization] = useState('')
+  const [organizationError, setOrganizationError] = useState('')
+  const [notice, setNotice] = useState<Notice | null>(null)
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit() {
-    if (loading) return
-    const next: FormErrors = {}
-    if (name.trim().length < 2) next.name = 'Escribe tu nombre.'
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) next.email = 'Escribe un correo válido.'
-    if (password.length < 6) next.password = 'La contraseña debe tener al menos 6 caracteres.'
-    setErrors(next)
-    setServerError('')
-    if (Object.keys(next).length > 0) return
+  const isOrganization = role === 'empresa'
 
+  async function handleGoogle() {
+    if (loading) return
+    if (isOrganization && organization.trim().length < 2) {
+      setOrganizationError('Escribe el nombre de la organización.')
+      return
+    }
+    setOrganizationError('')
+    setNotice(null)
     setLoading(true)
-    const result = await register({ name, email, password, role })
+    // Con el rol elegido se crea la cuenta; si ese correo de Google ya tenía cuenta, entra a ella.
+    const result = await signInWithGoogle({ role, name: isOrganization ? organization : undefined })
     setLoading(false)
-    if (!result.ok) setServerError(result.message)
+    if (!result.ok) setNotice({ tone: result.error === 'cancelled' ? 'info' : 'error', message: result.message })
   }
 
   return (
@@ -59,7 +57,7 @@ export function RegisterScreen() {
             <Pressable
               key={option}
               accessibilityRole="button"
-              accessibilityState={{ selected }}
+              aria-selected={selected}
               accessibilityLabel={`${info.title}. ${info.description}`}
               onPress={() => setRole(option)}
               style={({ pressed }) => [styles.option, selected && styles.optionSelected, pressed && styles.optionPressed]}
@@ -76,31 +74,22 @@ export function RegisterScreen() {
       </Section>
 
       <View style={styles.form}>
-        <TextField
-          label={role === 'empresa' ? 'Nombre de la organización' : 'Nombre completo'}
-          value={name}
-          onChangeText={setName}
-          error={errors.name}
+        {isOrganization && (
+          <TextField
+            label="Nombre de la organización"
+            value={organization}
+            onChangeText={setOrganization}
+            error={organizationError}
+          />
+        )}
+        <AppText>Usaremos tu cuenta de Google para crear tu perfil. No guardamos ninguna contraseña.</AppText>
+        {notice ? <Banner tone={notice.tone}>{notice.message}</Banner> : null}
+        <Button
+          label={loading ? 'Abriendo Google…' : 'Registrarme con Google'}
+          icon="logo-google"
+          disabled={loading}
+          onPress={handleGoogle}
         />
-        <TextField
-          label="Correo electrónico"
-          value={email}
-          onChangeText={setEmail}
-          error={errors.email}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <TextField
-          label="Contraseña"
-          value={password}
-          onChangeText={setPassword}
-          error={errors.password}
-          secureTextEntry
-          autoCapitalize="none"
-        />
-        {serverError ? <Banner tone="error">{serverError}</Banner> : null}
-        <Button label={loading ? 'Creando cuenta…' : 'Crear cuenta'} icon="checkmark-circle-outline" onPress={handleSubmit} />
       </View>
     </Screen>
   )
