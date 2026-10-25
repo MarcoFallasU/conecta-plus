@@ -1,6 +1,6 @@
 import type { Role } from '../context/RoleContext'
 import { daysFromNow } from '../utils/dates'
-import type { Account, Activity, FamilyLink, Recommendation, Review } from './types'
+import type { Account, Activity, FamilyLinkBase, Recommendation, Review } from './types'
 
 // Datos de ejemplo del prototipo (mock del backend); se reemplazan por la API.
 const PASSWORD = 'demo1234'
@@ -123,8 +123,6 @@ export const SEED_ENROLLMENTS: Record<string, string[]> = {
   'a-yoga': ['u-marta', 'u-luis'],
 }
 
-export const SEED_LINKS: FamilyLink[] = [{ id: 'l-1', caregiverId: 'u-rodrigo', elderId: 'u-marta', status: 'active' }]
-
 export const SEED_RECOMMENDATIONS: Recommendation[] = [
   { id: 'r-1', activityId: 'a-taichi', fromUserId: 'u-rodrigo', toUserId: 'u-marta' },
 ]
@@ -132,4 +130,9 @@ export const SEED_RECOMMENDATIONS: Recommendation[] = [
 export const SEED_REVIEWS: Review[] = [
   { id: 'rv-1', activityId: 'a-coro', userId: 'u-ana', rating: 5, comment: 'Muy lindo ambiente, volveré el próximo mes.', createdAt: daysFromNow(-5) },
   { id: 'rv-2', activityId: 'a-yoga', userId: 'u-luis', rating: 4, comment: 'La instructora fue muy paciente con todos.', createdAt: daysFromNow(-9) },
+]
+
+export const SEED_LINKS: FamilyLinkBase[] = [
+  { id: 'l-1', caregiverId: 'u-rodrigo', elderId: 'u-marta', status: 'active' },
+  { id: 'l-2', caregiverId: 'u-rodrigo', elderId: 'u-carlos', status: 'pending' },
 ]

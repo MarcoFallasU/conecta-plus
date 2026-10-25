@@ -20,15 +20,24 @@ type Props = NativeStackScreenProps<RootStackParamList, 'FamilyMember'>
 
 export function FamilyMemberScreen({ navigation, route }: Props) {
   const { user } = useSessionUser()
-  const { accounts, activities, enrollments, links, recommendations, recommend } = useAppData()
+  const { activities, enrollments, links, linksLoading, recommendations, recommend } = useAppData()
   const canRecommend = useCan('recommend_activity')
   const styles = useRoleStyles(createStyles)
 
-  const elder = accounts.find((a) => a.id === route.params.elderId)
-  const linked =
-    !!user && links.some((l) => l.caregiverId === user.id && l.elderId === route.params.elderId && l.status === 'active')
+  // El vínculo activo trae el nombre del adulto mayor (del servidor o de la demo).
+  const link = user
+    ? links.find((l) => l.caregiverId === user.id && l.elderId === route.params.elderId && l.status === 'active')
+    : undefined
 
-  if (!user || !elder || !linked || !canRecommend) {
+  if (!link && linksLoading) {
+    return (
+      <Screen>
+        <EmptyState icon="time-outline" title="Cargando" message="Estamos buscando el vínculo." />
+      </Screen>
+    )
+  }
+
+  if (!user || !link || !canRecommend) {
     return (
       <Screen>
         <EmptyState icon="lock-closed-outline" title="Sin acceso" message="Necesitas un vínculo activo con esta persona." />
@@ -36,17 +45,20 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
     )
   }
 
+  const elderId = link.elderId
+  const elderName = link.elderName
+
   const upcoming = activities.filter((a) => !isPast(a.startsAt))
-  const elderActivities = upcoming.filter((a) => enrollments[a.id]?.includes(elder.id)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-  const suggestions = upcoming.filter((a) => !enrollments[a.id]?.includes(elder.id)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+  const elderActivities = upcoming.filter((a) => enrollments[a.id]?.includes(elderId)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+  const suggestions = upcoming.filter((a) => !enrollments[a.id]?.includes(elderId)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
   const alreadyRecommended = (activityId: string) =>
-    recommendations.some((r) => r.activityId === activityId && r.fromUserId === user.id && r.toUserId === elder.id)
+    recommendations.some((r) => r.activityId === activityId && r.fromUserId === user.id && r.toUserId === elderId)
 
   return (
     <Screen>
-      <PersonRow name={elder.name} subtitle={ROLE_INFO[elder.role].label} badge={{ label: 'Vinculado', tone: 'success' }} />
+      <PersonRow name={elderName} subtitle={ROLE_INFO.adulto_mayor.label} badge={{ label: 'Vinculado', tone: 'success' }} />
 
-      <Section title={`Actividades de ${elder.name}`}>
+      <Section title={`Actividades de ${elderName}`}>
         {elderActivities.length === 0 ? (
           <EmptyState icon="calendar-outline" title="Sin actividades próximas" message="Recomiéndale una actividad aquí abajo." />
         ) : (
@@ -77,7 +89,7 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
                   icon={done ? 'checkmark-circle-outline' : 'heart-outline'}
                   label={done ? 'Recomendada' : 'Recomendar'}
                   disabled={done}
-                  onPress={() => recommend(activity.id, user.id, elder.id)}
+                  onPress={() => recommend(activity.id, user.id, elderId)}
                 />
               </View>
             )

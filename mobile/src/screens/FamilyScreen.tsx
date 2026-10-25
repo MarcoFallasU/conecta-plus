@@ -16,19 +16,39 @@ import { useRoleStyles } from '../theme/useRoleStyles'
 import { formatActivityDate, isPast } from '../utils/dates'
 import { createStyles } from './FamilyScreen.styles'
 
+interface ActionResult {
+  ok: boolean
+  message: string
+}
+
 export function FamilyScreen() {
   const navigation = useAppNavigation()
   const { user } = useSessionUser()
-  const { accounts, activities, links, recommendations, requestLink, respondLink, removeLink } = useAppData()
+  const {
+    accounts,
+    activities,
+    links,
+    linksLoading,
+    linksError,
+    refreshLinks,
+    recommendations,
+    requestLink,
+    respondLink,
+    removeLink,
+  } = useAppData()
   const canLink = useCan('link_family_member')
   const canRespond = useCan('respond_family_requests')
   const styles = useRoleStyles(createStyles)
   const [email, setEmail] = useState('')
-  const [feedback, setFeedback] = useState<{ ok: boolean; message: string } | null>(null)
+  const [feedback, setFeedback] = useState<ActionResult | null>(null)
+  const [actionError, setActionError] = useState('')
+  const [sending, setSending] = useState(false)
 
   if (!user) return null
 
-  const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? 'Usuario'
+  // Los nombres de las personas vinculadas vienen del servidor (cuentas reales) o de la demo.
+  // Las recomendaciones siguen siendo de ejemplo, así que ahí se busca en las cuentas del seed.
+  const nameOfAccount = (id: string) => accounts.find((a) => a.id === id)?.name ?? 'Usuario'
   const accompanied = links.filter((l) => l.caregiverId === user.id)
   const requests = links.filter((l) => l.elderId === user.id && l.status === 'pending')
   const family = links.filter((l) => l.elderId === user.id && l.status === 'active')
@@ -37,10 +57,22 @@ export function FamilyScreen() {
     return recommendation.toUserId === user.id && activity && !isPast(activity.startsAt) ? [{ recommendation, activity }] : []
   })
 
-  function handleSendRequest() {
-    const result = requestLink(user!.id, email)
+  async function handleSendRequest() {
+    if (sending) return
+    setSending(true)
+    setFeedback(null)
+    setActionError('')
+    const result = await requestLink(user!.id, email)
+    setSending(false)
     setFeedback(result)
     if (result.ok) setEmail('')
+  }
+
+  // Ejecuta una acción sobre un vínculo y muestra el error del servidor si falla.
+  async function runAction(action: () => Promise<ActionResult>) {
+    setActionError('')
+    const result = await action()
+    if (!result.ok) setActionError(result.message)
   }
 
   return (
@@ -51,6 +83,15 @@ export function FamilyScreen() {
           {canLink ? 'Acompaña a tus familiares y recomiéndales actividades.' : 'Las personas que te acompañan y sus recomendaciones.'}
         </AppText>
       </View>
+
+      {linksError ? (
+        <View style={styles.form}>
+          <Banner tone="error">{linksError}</Banner>
+          <Button variant="outline" icon="refresh-outline" label="Reintentar" onPress={refreshLinks} />
+        </View>
+      ) : null}
+      {actionError ? <Banner tone="error">{actionError}</Banner> : null}
+      {linksLoading && links.length === 0 && !linksError ? <AppText>Cargando vínculos…</AppText> : null}
 
       {canLink && (
         <>
@@ -66,7 +107,11 @@ export function FamilyScreen() {
                 autoCorrect={false}
               />
               {feedback ? <Banner tone={feedback.ok ? 'success' : 'error'}>{feedback.message}</Banner> : null}
-              <Button label="Enviar solicitud" icon="paper-plane-outline" onPress={handleSendRequest} />
+              <Button
+                label={sending ? 'Enviando…' : 'Enviar solicitud'}
+                icon="paper-plane-outline"
+                onPress={handleSendRequest}
+              />
             </View>
           </Section>
 
@@ -77,7 +122,7 @@ export function FamilyScreen() {
               accompanied.map((link) => (
                 <PersonRow
                   key={link.id}
-                  name={nameOf(link.elderId)}
+                  name={link.elderName}
                   badge={link.status === 'active' ? { label: 'Vinculado', tone: 'success' } : { label: 'Pendiente de aceptar' }}
                 >
                   {link.status === 'active' ? (
@@ -87,7 +132,7 @@ export function FamilyScreen() {
                       onPress={() => navigation.navigate('FamilyMember', { elderId: link.elderId })}
                     />
                   ) : (
-                    <Button variant="outline" label="Cancelar solicitud" onPress={() => removeLink(link.id)} />
+                    <Button variant="outline" label="Cancelar solicitud" onPress={() => runAction(() => removeLink(link.id))} />
                   )}
                 </PersonRow>
               ))
@@ -101,13 +146,13 @@ export function FamilyScreen() {
           {requests.length > 0 && (
             <Section title="Solicitudes de vínculo">
               {requests.map((link) => (
-                <PersonRow key={link.id} name={nameOf(link.caregiverId)} subtitle="Quiere acompañarte en la app">
+                <PersonRow key={link.id} name={link.caregiverName} subtitle="Quiere acompañarte en la app">
                   <View style={styles.actionRow}>
                     <View style={styles.actionCell}>
-                      <Button label="Aceptar" onPress={() => respondLink(link.id, true)} />
+                      <Button label="Aceptar" onPress={() => runAction(() => respondLink(link.id, true))} />
                     </View>
                     <View style={styles.actionCell}>
-                      <Button label="Rechazar" variant="outline" onPress={() => respondLink(link.id, false)} />
+                      <Button label="Rechazar" variant="outline" onPress={() => runAction(() => respondLink(link.id, false))} />
                     </View>
                   </View>
                 </PersonRow>
@@ -120,8 +165,8 @@ export function FamilyScreen() {
               <EmptyState icon="people-outline" title="Aún no tienes vínculos" message="Cuando un familiar te envíe una solicitud, aparecerá aquí." />
             ) : (
               family.map((link) => (
-                <PersonRow key={link.id} name={nameOf(link.caregiverId)} badge={{ label: 'Vinculado', tone: 'success' }}>
-                  <Button variant="outline" label="Quitar vínculo" onPress={() => removeLink(link.id)} />
+                <PersonRow key={link.id} name={link.caregiverName} badge={{ label: 'Vinculado', tone: 'success' }}>
+                  <Button variant="outline" label="Quitar vínculo" onPress={() => runAction(() => removeLink(link.id))} />
                 </PersonRow>
               ))
             )}
@@ -132,7 +177,7 @@ export function FamilyScreen() {
               {received.map(({ recommendation, activity }) => (
                 <PersonRow
                   key={recommendation.id}
-                  name={nameOf(recommendation.fromUserId)}
+                  name={nameOfAccount(recommendation.fromUserId)}
                   subtitle={`Te recomendó ${activity.title} · ${formatActivityDate(activity.startsAt)}`}
                 >
                   <Button

@@ -10,6 +10,7 @@ app.use(express.json());
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
 app.use('/api/auth', require('./src/routes/auth'));
+app.use('/api/links', require('./src/routes/links'));
 
 app.get('/api/categories', async (req, res) => {
   try {
