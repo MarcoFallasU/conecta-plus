@@ -20,7 +20,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'FamilyMember'>
 
 export function FamilyMemberScreen({ navigation, route }: Props) {
   const { user } = useSessionUser()
-  const { activities, enrollments, links, linksLoading, recommendations, recommend } = useAppData()
+  const { activities, enrollments, attendeesCount, links, linksLoading, recommendations, recommend } = useAppData()
   const canRecommend = useCan('recommend_activity')
   const styles = useRoleStyles(createStyles)
 
@@ -48,6 +48,7 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
   const elderId = link.elderId
   const elderName = link.elderName
 
+  // Con la API, `enrollments` solo trae las inscripciones del propio usuario y de sus familiares vinculados.
   const upcoming = activities.filter((a) => !isPast(a.startsAt))
   const elderActivities = upcoming.filter((a) => enrollments[a.id]?.includes(elderId)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
   const suggestions = upcoming.filter((a) => !enrollments[a.id]?.includes(elderId)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
@@ -66,7 +67,7 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
             <ActivityCard
               key={activity.id}
               activity={activity}
-              attendeesCount={enrollments[activity.id]?.length ?? 0}
+              attendeesCount={attendeesCount(activity.id)}
               onPress={() => navigation.navigate('ActivityDetail', { activityId: activity.id })}
             />
           ))

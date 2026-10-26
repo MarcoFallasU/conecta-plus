@@ -21,7 +21,7 @@ const byDate = (a: Activity, b: Activity) => a.startsAt.localeCompare(b.startsAt
 export function AgendaScreen() {
   const navigation = useAppNavigation()
   const { user } = useSessionUser()
-  const { activities, enrollments } = useAppData()
+  const { activities, enrollments, attendeesCount } = useAppData()
   const canRegister = useCan('register_self')
   const canCreate = useCan('create_event')
   const styles = useRoleStyles(createStyles)
@@ -37,7 +37,7 @@ export function AgendaScreen() {
     <ActivityCard
       key={activity.id}
       activity={activity}
-      attendeesCount={enrollments[activity.id]?.length ?? 0}
+      attendeesCount={attendeesCount(activity.id)}
       badge={badge}
       onPress={() => navigation.navigate('ActivityDetail', { activityId: activity.id })}
     />

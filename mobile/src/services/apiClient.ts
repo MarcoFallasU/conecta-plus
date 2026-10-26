@@ -5,6 +5,9 @@ import * as SecureStore from 'expo-secure-store'
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:4000/api'
 const TOKEN_KEY = 'auth_token'
 
+// Dirección del servidor sin el prefijo /api; sirve para armar la URL de las imágenes que guarda la API.
+export const API_ORIGIN = BASE_URL.replace(/\/api\/?$/, '')
+
 // En web se usa localStorage; en celular, almacenamiento seguro del sistema.
 export const tokenStorage = {
   async get(): Promise<string | null> {

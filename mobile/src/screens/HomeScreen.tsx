@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { ScrollView, View } from 'react-native'
 import { ActivityCard } from '../components/ActivityCard'
 import { AppText } from '../components/AppText'
+import { Banner } from '../components/Banner'
+import { Button } from '../components/Button'
 import { Chip } from '../components/Chip'
 import { EmptyState } from '../components/EmptyState'
 import { Screen, TAB_EDGES } from '../components/Screen'
@@ -15,7 +17,7 @@ import { createStyles } from './HomeScreen.styles'
 
 export function HomeScreen() {
   const navigation = useAppNavigation()
-  const { activities, enrollments } = useAppData()
+  const { activities, activitiesLoading, activitiesError, refreshActivities, attendeesCount } = useAppData()
   const styles = useRoleStyles(createStyles)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string | null>(null)
@@ -54,18 +56,29 @@ export function HomeScreen() {
         ))}
       </ScrollView>
 
-      <AppText variant="caption">
-        {results.length} {results.length === 1 ? 'actividad encontrada' : 'actividades encontradas'}
-      </AppText>
+      {activitiesError ? (
+        <>
+          <Banner tone="error">{activitiesError}</Banner>
+          <Button variant="outline" icon="refresh-outline" label="Reintentar" onPress={refreshActivities} />
+        </>
+      ) : null}
 
-      {results.length === 0 ? (
+      {activitiesLoading && activities.length === 0 ? (
+        <AppText>Cargando actividades…</AppText>
+      ) : (
+        <AppText variant="caption">
+          {results.length} {results.length === 1 ? 'actividad encontrada' : 'actividades encontradas'}
+        </AppText>
+      )}
+
+      {results.length === 0 && !activitiesLoading && !activitiesError ? (
         <EmptyState icon="search-outline" title="Sin resultados" message="Prueba con otra palabra o quita el filtro de categoría." />
       ) : (
         results.map((activity) => (
           <ActivityCard
             key={activity.id}
             activity={activity}
-            attendeesCount={enrollments[activity.id]?.length ?? 0}
+            attendeesCount={attendeesCount(activity.id)}
             onPress={() => navigation.navigate('ActivityDetail', { activityId: activity.id })}
           />
         ))
