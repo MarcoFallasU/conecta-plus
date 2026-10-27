@@ -18,6 +18,7 @@ import { getZone } from '../data/zones'
 import { useAppNavigation } from '../navigation/useAppNavigation'
 import { useCan } from '../permissions/permissions'
 import { useRoleStyles } from '../theme/useRoleStyles'
+import { isOpen } from '../utils/capacity'
 import { formatLongDate, greeting, isPast, timeUntil } from '../utils/dates'
 import { distanceKm } from '../utils/geo'
 import { openExternal, telUrl } from '../utils/links'
@@ -29,7 +30,18 @@ import { createStyles } from './HomeScreen.styles'
 export function HomeScreen() {
   const navigation = useAppNavigation()
   const { user } = useSessionUser()
-  const { accounts, activities, enrollments, attendance, links, recommendations, dismissedNotices } = useAppData()
+  const {
+    accounts,
+    activities,
+    activitiesError,
+    refreshActivities,
+    enrollments,
+    attendeesCount,
+    attendance,
+    links,
+    recommendations,
+    dismissedNotices,
+  } = useAppData()
   const profile = useMyProfile()
   const styles = useRoleStyles(createStyles)
   const canRegister = useCan('register_self')
@@ -58,30 +70,30 @@ export function HomeScreen() {
   const pendingNotices = notices.length
 
   const upcomingMine = activities
-    .filter((a) => a.status === 'disponible' && !isPast(a.startsAt) && (enrollments[a.id] ?? []).includes(user.id))
+    .filter((a) => isOpen(a) && !isPast(a.startsAt) && (enrollments[a.id] ?? []).includes(user.id))
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
   const next = upcomingMine[0]
 
   const suggestions = canRegister
-    ? suggestActivities({ userId: user.id, profile, activities, enrollments, attendance, recommendations, accounts, origin })
+    ? suggestActivities({ userId: user.id, profile, activities, enrollments, attendeesCount, attendance, recommendations, accounts, origin })
     : []
 
   const suggestedIds = new Set(suggestions.map((s) => s.activity.id))
   const featured = activities
-    .filter((a) => a.status === 'disponible' && a.featured && !isPast(a.startsAt) && a.createdBy !== user.id)
+    .filter((a) => isOpen(a) && a.featured && !isPast(a.startsAt) && a.createdBy !== user.id)
     .filter((a) => !suggestedIds.has(a.id) && !(enrollments[a.id] ?? []).includes(user.id))
     .sort((a, b) => (origin ? distanceKm(origin, a) - distanceKm(origin, b) : a.startsAt.localeCompare(b.startsAt)))
     .slice(0, 3)
 
   const published = activities.filter((a) => a.createdBy === user.id)
-  const publishedUpcoming = published.filter((a) => a.status === 'disponible' && !isPast(a.startsAt))
-  const enrolledInMine = publishedUpcoming.reduce((total, a) => total + (enrollments[a.id]?.length ?? 0), 0)
+  const publishedUpcoming = published.filter((a) => isOpen(a) && !isPast(a.startsAt))
+  const enrolledInMine = publishedUpcoming.reduce((total, a) => total + attendeesCount(a.id), 0)
 
   const needsProfile = !profile.zoneId || (canEditInterests && profile.interests.length === 0)
   const emergencyContact = profile.emergencyContacts[0]
 
   const openActivity = (activityId: string) => navigation.navigate('ActivityDetail', { activityId })
-  const distanceTo = (latitude: number, longitude: number) => (origin ? distanceKm(origin, { latitude, longitude }) : null)
+  const distanceTo = (lat: number, lng: number) => (origin ? distanceKm(origin, { lat, lng }) : null)
 
   return (
     <Screen edges={TAB_EDGES}>
@@ -93,6 +105,13 @@ export function HomeScreen() {
         </View>
         <IconButton icon="notifications-outline" label="Mis avisos" badge={pendingNotices} onPress={() => navigation.navigate('Notices')} />
       </View>
+
+      {activitiesError ? (
+        <View style={styles.block}>
+          <Banner tone="error">{activitiesError}</Banner>
+          <Button variant="outline" icon="refresh-outline" label="Reintentar" onPress={refreshActivities} />
+        </View>
+      ) : null}
 
       {needsProfile && (
         <View style={styles.block}>
@@ -121,9 +140,9 @@ export function HomeScreen() {
           {next ? (
             <ActivityCard
               activity={next}
-              attendeesCount={enrollments[next.id]?.length ?? 0}
+              attendeesCount={attendeesCount(next.id)}
               badge={timeUntil(next.startsAt) || undefined}
-              distanceKm={distanceTo(next.latitude, next.longitude)}
+              distanceKm={distanceTo(next.lat, next.lng)}
               onPress={() => openActivity(next.id)}
             />
           ) : (
@@ -161,7 +180,7 @@ export function HomeScreen() {
             <ActivityCard
               key={activity.id}
               activity={activity}
-              attendeesCount={enrollments[activity.id]?.length ?? 0}
+              attendeesCount={attendeesCount(activity.id)}
               badge={reasons[0]}
               distanceKm={km}
               onPress={() => openActivity(activity.id)}
@@ -186,8 +205,8 @@ export function HomeScreen() {
             <ActivityCard
               key={activity.id}
               activity={activity}
-              attendeesCount={enrollments[activity.id]?.length ?? 0}
-              distanceKm={distanceTo(activity.latitude, activity.longitude)}
+              attendeesCount={attendeesCount(activity.id)}
+              distanceKm={distanceTo(activity.lat, activity.lng)}
               onPress={() => openActivity(activity.id)}
             />
           ))}

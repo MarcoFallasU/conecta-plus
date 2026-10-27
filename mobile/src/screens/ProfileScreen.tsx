@@ -23,6 +23,7 @@ import { useAppNavigation } from '../navigation/useAppNavigation'
 import { useCan } from '../permissions/permissions'
 import { CREATE_EVENT_REPUTATION_THRESHOLD, REVIEW_POINTS } from '../permissions/reputation'
 import { useRoleStyles } from '../theme/useRoleStyles'
+import { isOpen } from '../utils/capacity'
 import { isPast } from '../utils/dates'
 import { openExternal, telUrl } from '../utils/links'
 import { ageFromBirthYear } from '../utils/people'
@@ -33,7 +34,7 @@ const TEXT_SIZE_OPTIONS = (Object.keys(TEXT_SIZE_LABELS) as TextSize[]).map((val
 export function ProfileScreen() {
   const navigation = useAppNavigation()
   const { user } = useSessionUser()
-  const { activities, enrollments, attendance, reviews, logout } = useAppData()
+  const { activities, enrollments, attendeesCount, attendance, reviews, logout } = useAppData()
   const profile = useMyProfile()
   const { textSize, highContrast, setTextSize, setHighContrast } = usePreferences()
   const canRegister = useCan('register_self')
@@ -50,13 +51,13 @@ export function ProfileScreen() {
   const published = activities.filter((a) => a.createdBy === user.id)
   const stats = canRegister
     ? [
-        { value: mine.filter((a) => !isPast(a.startsAt) && a.status === 'disponible').length, label: 'Próximas' },
+        { value: mine.filter((a) => !isPast(a.startsAt) && isOpen(a)).length, label: 'Próximas' },
         { value: mine.filter((a) => attendance[attendanceKey(a.id, user.id)] === 'asistio').length, label: 'Asistidas' },
         { value: reviews.filter((r) => r.userId === user.id).length, label: 'Reseñas' },
       ]
     : [
         { value: published.length, label: 'Eventos publicados' },
-        { value: published.reduce((total, a) => total + (enrollments[a.id]?.length ?? 0), 0), label: 'Inscritos en total' },
+        { value: published.reduce((total, a) => total + attendeesCount(a.id), 0), label: 'Inscritos en total' },
       ]
   const progress = Math.min(1, user.reputationScore / CREATE_EVENT_REPUTATION_THRESHOLD)
   const zone = getZone(profile.zoneId)

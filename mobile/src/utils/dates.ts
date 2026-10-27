@@ -5,6 +5,9 @@ const MONTHS_LONG = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'jul
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+// Cuando una actividad no trae duración (las de la API), se asume esta para el calendario.
+export const DEFAULT_DURATION_MINUTES = 120
+
 export function formatTime(date: Date) {
   const hours = date.getHours()
   const minutes = String(date.getMinutes()).padStart(2, '0')

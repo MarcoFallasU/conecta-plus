@@ -41,6 +41,7 @@ export function deriveNotices(input: NoticesInput): Notice[] {
   const now = input.now ?? new Date()
   const notices: Notice[] = []
   const nameOf = (id: string) => greetingName(accounts.find((a) => a.id === id)?.name ?? 'Alguien')
+  const nameOrFallback = (name: string) => greetingName(name || 'Alguien')
 
   for (const activity of activities) {
     const enrolled = (enrollments[activity.id] ?? []).includes(userId)
@@ -111,7 +112,7 @@ export function deriveNotices(input: NoticesInput): Notice[] {
       notices.push({
         id: `family:${link.id}`,
         type: 'family_request',
-        title: `${nameOf(link.caregiverId)} quiere acompañarte`,
+        title: `${nameOrFallback(link.caregiverName)} quiere acompañarte`,
         message: 'Si aceptas, podrá ver tus actividades y recomendarte nuevas.',
         linkId: link.id,
         urgent: true,
@@ -124,7 +125,7 @@ export function deriveNotices(input: NoticesInput): Notice[] {
   for (const recommendation of recommendations) {
     if (recommendation.toUserId !== userId) continue
     const activity = activities.find((a) => a.id === recommendation.activityId)
-    if (!activity || activity.status !== 'disponible' || isPast(activity.startsAt)) continue
+    if (!activity || activity.status === 'cancelada' || isPast(activity.startsAt)) continue
     if ((enrollments[activity.id] ?? []).includes(userId)) continue
     notices.push({
       id: `rec:${recommendation.id}`,

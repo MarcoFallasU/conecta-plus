@@ -14,7 +14,9 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 const google = createGoogle();
 app.use('/api/auth/google', createGoogleAuthRouter({ prisma, google }));
 app.use('/api/auth', require('./src/routes/auth'));
-
+app.use('/api/links', require('./src/routes/links'));
+app.use('/api/activities', require('./src/routes/activities'));
+app.use('/api/geocode', require('./src/routes/geocode'));
 app.get('/api/categories', async (req, res) => {
   try {
     const categories = await prisma.category.findMany({ orderBy: { order: 'asc' } });

@@ -2,6 +2,7 @@ import { Image, Pressable, View } from 'react-native'
 import type { Activity } from '../data/types'
 import { useRoleDisplay } from '../theme/roleDisplay'
 import { useRoleStyles } from '../theme/useRoleStyles'
+import { isFull, spotsLeft as spotsLeftOf } from '../utils/capacity'
 import { friendlyDate } from '../utils/dates'
 import { formatDistance } from '../utils/geo'
 import { attendeesLabel } from '../utils/text'
@@ -28,9 +29,9 @@ export function ActivityCard({ activity, attendeesCount, badge, distanceKm, onPr
   const isVertical = display.cardLayout === 'vertical'
   const when = friendlyDate(activity.startsAt)
   const cancelled = activity.status === 'cancelada'
-  const spotsLeft = activity.capacity === null ? null : Math.max(0, activity.capacity - attendeesCount)
-  const full = spotsLeft === 0
-  const fewSpots = spotsLeft !== null && spotsLeft > 0 && spotsLeft <= FEW_SPOTS
+  const spotsLeft = spotsLeftOf(activity, attendeesCount)
+  const full = isFull(activity, attendeesCount)
+  const fewSpots = !full && spotsLeft !== null && spotsLeft <= FEW_SPOTS
 
   const a11yParts = [activity.title, when, activity.place]
   if (cancelled) a11yParts.push('cancelada')

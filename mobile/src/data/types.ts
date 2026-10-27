@@ -1,4 +1,4 @@
-import type { SessionUser } from '../context/RoleContext'
+import type { Role, SessionUser } from '../context/RoleContext'
 
 export interface EmergencyContact {
   id: string
@@ -22,32 +22,63 @@ export interface Account extends SessionUser {
   profile: UserProfile
 }
 
-export type ActivityStatus = 'disponible' | 'cancelada'
+// 'llena' la marca el servidor al alcanzar el cupo; la app también la deduce del cupo y los inscritos.
+export type ActivityStatus = 'disponible' | 'llena' | 'cancelada'
 
+// La misma forma sirve para las actividades de la API y las de demostración. Los campos
+// opcionales solo los trae uno de los dos orígenes (ver comentarios).
 export interface Activity {
   id: string
   title: string
   description: string
   category: string
   startsAt: string
-  durationMinutes: number
+  // Solo las de demostración: la API todavía no guarda la duración.
+  durationMinutes?: number
   place: string
-  zoneId: string
-  latitude: number
-  longitude: number
+  placeAddress?: string
+  lat: number
+  lng: number
   imageUrl: string
   createdBy: string
+  createdByName?: string
   featured: boolean
   // null = sin límite de cupo.
   capacity: number | null
+  // Solo la API trae el total de inscritos (las inscripciones visibles son solo las propias
+  // y las de los familiares); en demostración se cuenta desde las inscripciones.
+  attendeesCount?: number
   status: ActivityStatus
 }
 
-export interface FamilyLink {
+// Resultado de la búsqueda de lugares (viene de la API).
+export interface PlaceResult {
+  name: string
+  address: string
+  lat: number
+  lng: number
+}
+
+// Persona inscrita en una actividad, tal como la ve quien publicó el evento.
+export interface Attendee {
+  id: string
+  name: string
+  role: Role
+}
+
+// Vínculo tal como lo guardan las cuentas de demostración (sin nombres).
+export interface FamilyLinkBase {
   id: string
   caregiverId: string
   elderId: string
   status: 'pending' | 'active'
+}
+
+// Vínculo que consumen las pantallas: siempre trae los dos nombres.
+// Con la API vienen del servidor; con cuentas demo los resuelve AppDataContext.
+export interface FamilyLink extends FamilyLinkBase {
+  caregiverName: string
+  elderName: string
 }
 
 export interface Recommendation {

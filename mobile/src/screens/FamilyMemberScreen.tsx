@@ -13,6 +13,7 @@ import { ROLE_INFO } from '../data/roles'
 import type { RootStackParamList } from '../navigation/types'
 import { useCan } from '../permissions/permissions'
 import { useRoleStyles } from '../theme/useRoleStyles'
+import { isOpen } from '../utils/capacity'
 import { formatActivityDate, isPast } from '../utils/dates'
 import { openExternal, telUrl } from '../utils/links'
 import { greetingName } from '../utils/people'
@@ -22,16 +23,26 @@ type Props = NativeStackScreenProps<RootStackParamList, 'FamilyMember'>
 
 export function FamilyMemberScreen({ navigation, route }: Props) {
   const { user } = useSessionUser()
-  const { accounts, activities, enrollments, links, recommendations, recommend } = useAppData()
+  const { accounts, activities, enrollments, attendeesCount, links, linksLoading, recommendations, recommend, usesApi } =
+    useAppData()
   const canRecommend = useCan('recommend_activity')
   const canViewSummary = useCan('view_family_summary')
   const styles = useRoleStyles(createStyles)
 
-  const elder = accounts.find((a) => a.id === route.params.elderId)
-  const linked =
-    !!user && links.some((l) => l.caregiverId === user.id && l.elderId === route.params.elderId && l.status === 'active')
+  // El vínculo activo trae el nombre del adulto mayor (del servidor o de la demostración).
+  const link = user
+    ? links.find((l) => l.caregiverId === user.id && l.elderId === route.params.elderId && l.status === 'active')
+    : undefined
 
-  if (!user || !elder || !linked || !canRecommend) {
+  if (!link && linksLoading) {
+    return (
+      <Screen>
+        <EmptyState icon="time-outline" title="Cargando" message="Estamos buscando el vínculo." />
+      </Screen>
+    )
+  }
+
+  if (!user || !link || !canRecommend) {
     return (
       <Screen>
         <EmptyState icon="lock-closed-outline" title="Sin acceso" message="Necesitas un vínculo activo con esta persona." />
@@ -39,29 +50,36 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
     )
   }
 
-  const upcoming = activities.filter((a) => !isPast(a.startsAt) && a.status === 'disponible')
-  const elderActivities = upcoming.filter((a) => enrollments[a.id]?.includes(elder.id)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-  const suggestions = upcoming.filter((a) => !enrollments[a.id]?.includes(elder.id)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+  const elderId = link.elderId
+  const elderName = link.elderName
+  // El teléfono es un dato del perfil local: con cuentas reales todavía no se comparte entre personas.
+  const elderPhone = accounts.find((a) => a.id === elderId)?.profile.phone
+
+  // Con la API, `enrollments` solo trae las inscripciones del propio usuario y de sus familiares vinculados.
+  const upcoming = activities.filter((a) => !isPast(a.startsAt) && isOpen(a))
+  const elderActivities = upcoming.filter((a) => enrollments[a.id]?.includes(elderId)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+  const suggestions = upcoming.filter((a) => !enrollments[a.id]?.includes(elderId)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
   const alreadyRecommended = (activityId: string) =>
-    recommendations.some((r) => r.activityId === activityId && r.fromUserId === user.id && r.toUserId === elder.id)
+    recommendations.some((r) => r.activityId === activityId && r.fromUserId === user.id && r.toUserId === elderId)
 
   return (
     <Screen>
-      <PersonRow name={elder.name} subtitle={ROLE_INFO[elder.role].label} badge={{ label: 'Vinculado', tone: 'success' }}>
-        {canViewSummary && (
+      <PersonRow name={elderName} subtitle={ROLE_INFO.adulto_mayor.label} badge={{ label: 'Vinculado', tone: 'success' }}>
+        {/* El resumen se arma con la asistencia confirmada, que todavía no se guarda en el servidor. */}
+        {canViewSummary && !usesApi && (
           <Button
             variant="secondary"
             icon="stats-chart-outline"
             label="Ver su resumen del mes"
-            onPress={() => navigation.navigate('Progress', { userId: elder.id })}
+            onPress={() => navigation.navigate('Progress', { userId: elderId })}
           />
         )}
-        {elder.profile.phone ? (
-          <Button variant="outline" icon="call-outline" label={`Llamar a ${greetingName(elder.name)}`} onPress={() => openExternal(telUrl(elder.profile.phone))} />
+        {elderPhone ? (
+          <Button variant="outline" icon="call-outline" label={`Llamar a ${greetingName(elderName)}`} onPress={() => openExternal(telUrl(elderPhone))} />
         ) : null}
       </PersonRow>
 
-      <Section title={`Actividades de ${elder.name}`}>
+      <Section title={`Actividades de ${elderName}`}>
         {elderActivities.length === 0 ? (
           <EmptyState icon="calendar-outline" title="Sin actividades próximas" message="Recomiéndale una actividad aquí abajo." />
         ) : (
@@ -69,7 +87,7 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
             <ActivityCard
               key={activity.id}
               activity={activity}
-              attendeesCount={enrollments[activity.id]?.length ?? 0}
+              attendeesCount={attendeesCount(activity.id)}
               onPress={() => navigation.navigate('ActivityDetail', { activityId: activity.id })}
             />
           ))
@@ -92,7 +110,7 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
                   icon={done ? 'checkmark-circle-outline' : 'heart-outline'}
                   label={done ? 'Recomendada' : 'Recomendar'}
                   disabled={done}
-                  onPress={() => recommend(activity.id, user.id, elder.id)}
+                  onPress={() => recommend(activity.id, user.id, elderId)}
                 />
               </View>
             )

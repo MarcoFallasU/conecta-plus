@@ -34,7 +34,7 @@ type ExploreView = 'list' | 'map'
 
 export function ExploreScreen({ route }: Props) {
   const navigation = useAppNavigation()
-  const { activities, enrollments } = useAppData()
+  const { activities, activitiesLoading, activitiesError, refreshActivities, attendeesCount } = useAppData()
   const profile = useMyProfile()
   const styles = useRoleStyles(createStyles)
   const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS)
@@ -58,8 +58,8 @@ export function ExploreScreen({ route }: Props) {
   const selected = results.find((r) => r.activity.id === selectedId) ?? results[0]
   const pins: MapPin[] = results.map(({ activity }) => ({
     id: activity.id,
-    latitude: activity.latitude,
-    longitude: activity.longitude,
+    lat: activity.lat,
+    lng: activity.lng,
     icon: categoryIcon(activity.category),
     label: `${activity.title}, ${friendlyDate(activity.startsAt)}`,
     featured: activity.featured,
@@ -163,24 +163,35 @@ export function ExploreScreen({ route }: Props) {
       )}
       {!origin && !showFilters && <Button variant="secondary" icon="person-outline" label="Completar mis datos" onPress={() => navigation.navigate('EditProfile')} />}
 
-      <AppText variant="caption" accessibilityLiveRegion="polite">
-        {results.length} {results.length === 1 ? 'actividad encontrada' : 'actividades encontradas'}
-      </AppText>
+      {activitiesError ? (
+        <>
+          <Banner tone="error">{activitiesError}</Banner>
+          <Button variant="outline" icon="refresh-outline" label="Reintentar" onPress={refreshActivities} />
+        </>
+      ) : null}
 
-      {results.length === 0 ? (
+      {activitiesLoading && activities.length === 0 ? (
+        <AppText accessibilityLiveRegion="polite">Cargando actividades…</AppText>
+      ) : (
+        <AppText variant="caption" accessibilityLiveRegion="polite">
+          {results.length} {results.length === 1 ? 'actividad encontrada' : 'actividades encontradas'}
+        </AppText>
+      )}
+
+      {results.length === 0 && (activitiesLoading || activitiesError) ? null : results.length === 0 ? (
         <EmptyState icon="search-outline" title="Sin resultados" message="Prueba con otra palabra o quita algún filtro." />
       ) : view === 'map' ? (
         <>
           <ActivityMap
             pins={pins}
-            origin={origin ? { latitude: origin.latitude, longitude: origin.longitude, label: `Tu zona: ${origin.name}` } : undefined}
+            origin={origin ? { lat: origin.lat, lng: origin.lng, label: `Tu zona: ${origin.name}` } : undefined}
             selectedId={selected?.activity.id ?? null}
             onSelect={setSelectedId}
           />
           {selected && (
             <ActivityCard
               activity={selected.activity}
-              attendeesCount={enrollments[selected.activity.id]?.length ?? 0}
+              attendeesCount={attendeesCount(selected.activity.id)}
               distanceKm={selected.distanceKm}
               onPress={() => openActivity(selected.activity.id)}
             />
@@ -191,7 +202,7 @@ export function ExploreScreen({ route }: Props) {
           <ActivityCard
             key={activity.id}
             activity={activity}
-            attendeesCount={enrollments[activity.id]?.length ?? 0}
+            attendeesCount={attendeesCount(activity.id)}
             distanceKm={distanceKm}
             onPress={() => openActivity(activity.id)}
           />

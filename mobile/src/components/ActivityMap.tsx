@@ -9,16 +9,16 @@ import { createStyles } from './ActivityMap.styles'
 
 export interface MapPin {
   id: string
-  latitude: number
-  longitude: number
+  lat: number
+  lng: number
   icon: IconName
   label: string
   featured?: boolean
 }
 
 export interface MapOrigin {
-  latitude: number
-  longitude: number
+  lat: number
+  lng: number
   label: string
 }
 
@@ -51,20 +51,20 @@ function layoutPoints(
   pinSize: number,
 ): Record<string, Placed> {
   const all = [
-    ...pins.map((p) => ({ key: p.id, latitude: p.latitude, longitude: p.longitude })),
-    ...(origin ? [{ key: ORIGIN_KEY, latitude: origin.latitude, longitude: origin.longitude }] : []),
+    ...pins.map((p) => ({ key: p.id, lat: p.lat, lng: p.lng })),
+    ...(origin ? [{ key: ORIGIN_KEY, lat: origin.lat, lng: origin.lng }] : []),
   ]
   if (all.length === 0) return {}
 
   const center = origin ?? {
-    latitude: all.reduce((sum, p) => sum + p.latitude, 0) / all.length,
-    longitude: all.reduce((sum, p) => sum + p.longitude, 0) / all.length,
+    lat: all.reduce((sum, p) => sum + p.lat, 0) / all.length,
+    lng: all.reduce((sum, p) => sum + p.lng, 0) / all.length,
   }
-  const lonScale = Math.cos((center.latitude * Math.PI) / 180)
+  const lonScale = Math.cos((center.lat * Math.PI) / 180)
 
   const relative = all.map((p) => {
-    const dx = (p.longitude - center.longitude) * lonScale
-    const dy = center.latitude - p.latitude // hacia abajo = más al sur
+    const dx = (p.lng - center.lng) * lonScale
+    const dy = center.lat - p.lat // hacia abajo = más al sur
     const r = Math.hypot(dx, dy)
     const scaled = r === 0 ? 0 : Math.pow(r, DISTANCE_EXPONENT)
     return { key: p.key, x: r === 0 ? 0 : (dx / r) * scaled, y: r === 0 ? 0 : (dy / r) * scaled }

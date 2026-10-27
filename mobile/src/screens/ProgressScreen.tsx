@@ -16,6 +16,7 @@ import { attendanceKey } from '../data/types'
 import type { RootStackParamList } from '../navigation/types'
 import { useCan } from '../permissions/permissions'
 import { useRoleStyles } from '../theme/useRoleStyles'
+import { isOpen } from '../utils/capacity'
 import { isPast } from '../utils/dates'
 import { greetingName } from '../utils/people'
 import { activeMonthsStreak, attendedActivities, categoryBreakdown, monthSummary, monthlyAttendance } from '../utils/progress'
@@ -27,7 +28,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Progress'>
 // frecuentadas y un texto corto que el familiar también puede consultar.
 export function ProgressScreen({ navigation, route }: Props) {
   const { user } = useSessionUser()
-  const { accounts, activities, enrollments, attendance, links } = useAppData()
+  const { accounts, activities, enrollments, attendeesCount, attendance, links } = useAppData()
   const canViewOwn = useCan('view_progress')
   const canViewFamily = useCan('view_family_summary')
   const styles = useRoleStyles(createStyles)
@@ -56,7 +57,7 @@ export function ProgressScreen({ navigation, route }: Props) {
     (a) =>
       (enrollments[a.id] ?? []).includes(target.id) &&
       isPast(a.startsAt) &&
-      a.status === 'disponible' &&
+      isOpen(a) &&
       attendance[attendanceKey(a.id, target.id)] === undefined,
   ).length
   const missed = Object.entries(attendance).filter(([key, value]) => key.endsWith(`:${target.id}`) && value === 'no_asistio').length
@@ -115,7 +116,7 @@ export function ProgressScreen({ navigation, route }: Props) {
             <ActivityCard
               key={activity.id}
               activity={activity}
-              attendeesCount={enrollments[activity.id]?.length ?? 0}
+              attendeesCount={attendeesCount(activity.id)}
               badge="Asistió"
               onPress={() => navigation.navigate('ActivityDetail', { activityId: activity.id })}
             />

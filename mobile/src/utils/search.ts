@@ -1,5 +1,6 @@
 import type { Activity } from '../data/types'
 import type { Zone } from '../data/zones'
+import { isOpen } from './capacity'
 import { addDays, dayKey, dayDiff, isPast } from './dates'
 import { distanceKm } from './geo'
 
@@ -76,7 +77,7 @@ export function searchActivities(activities: Activity[], filters: SearchFilters,
   const words = normalize(filters.query.trim()).split(/\s+/).filter(Boolean)
 
   const results = activities
-    .filter((a) => a.status === 'disponible' && !isPast(a.startsAt))
+    .filter((a) => isOpen(a) && !isPast(a.startsAt))
     .filter((a) => !filters.category || a.category === filters.category)
     .filter((a) => matchesDate(a.startsAt, filters.date, now))
     .filter((a) => {

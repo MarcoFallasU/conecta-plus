@@ -1,6 +1,7 @@
 import type { Account, Activity, AttendanceStatus, Recommendation, UserProfile } from '../data/types'
 import { attendanceKey } from '../data/types'
 import type { Zone } from '../data/zones'
+import { isFull, isOpen } from './capacity'
 import { dayDiff, isPast } from './dates'
 import { distanceKm, distanceWords } from './geo'
 import { greetingName } from './people'
@@ -17,6 +18,8 @@ interface SuggestInput {
   profile: UserProfile
   activities: Activity[]
   enrollments: Record<string, string[]>
+  // Total de inscritos por actividad (con la API no se deduce de `enrollments`).
+  attendeesCount: (activityId: string) => number
   attendance: Record<string, AttendanceStatus>
   recommendations: Recommendation[]
   accounts: Account[]
@@ -29,7 +32,7 @@ interface SuggestInput {
 // declarados, las categorías a las que ya asistió, lo que le recomendó su familia y la
 // cercanía. Es una heurística de prototipo; la API la reemplazará con datos reales.
 export function suggestActivities(input: SuggestInput): Suggestion[] {
-  const { userId, profile, activities, enrollments, attendance, recommendations, accounts, origin, limit = 3 } = input
+  const { userId, profile, activities, enrollments, attendeesCount, attendance, recommendations, accounts, origin, limit = 3 } = input
   const now = input.now ?? new Date()
 
   const attendedCategories = new Map<string, number>()
@@ -42,10 +45,9 @@ export function suggestActivities(input: SuggestInput): Suggestion[] {
   const suggestions: Suggestion[] = []
 
   for (const activity of activities) {
-    if (activity.status !== 'disponible' || isPast(activity.startsAt)) continue
-    const attendees = enrollments[activity.id] ?? []
-    if (attendees.includes(userId)) continue
-    if (activity.capacity !== null && attendees.length >= activity.capacity) continue
+    if (!isOpen(activity) || isPast(activity.startsAt)) continue
+    if ((enrollments[activity.id] ?? []).includes(userId)) continue
+    if (isFull(activity, attendeesCount(activity.id))) continue
 
     let score = 0
     const reasons: string[] = []

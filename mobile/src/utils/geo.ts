@@ -1,6 +1,6 @@
 interface Point {
-  latitude: number
-  longitude: number
+  lat: number
+  lng: number
 }
 
 const EARTH_RADIUS_KM = 6371
@@ -11,10 +11,10 @@ function toRadians(degrees: number) {
 
 // Distancia en línea recta (fórmula de Haversine).
 export function distanceKm(a: Point, b: Point) {
-  const dLat = toRadians(b.latitude - a.latitude)
-  const dLon = toRadians(b.longitude - a.longitude)
+  const dLat = toRadians(b.lat - a.lat)
+  const dLon = toRadians(b.lng - a.lng)
   const h =
-    Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(a.latitude)) * Math.cos(toRadians(b.latitude)) * Math.sin(dLon / 2) ** 2
+    Math.sin(dLat / 2) ** 2 + Math.cos(toRadians(a.lat)) * Math.cos(toRadians(b.lat)) * Math.sin(dLon / 2) ** 2
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h))
 }
 

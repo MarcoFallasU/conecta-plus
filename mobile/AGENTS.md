@@ -48,9 +48,12 @@ carpetas ni módulos separados por rol.** Lo que cambia por rol es:
   pesos, escala tipográfica, sombras). Los tamaños de texto son múltiplos del
   `baseFontSize` del rol.
 - `src/permissions/reputation.ts` — umbrales y puntos de reputación.
-- `src/context/AppDataContext.tsx` — mock del backend (cuentas, actividades,
-  inscripciones, vínculos, reseñas). Se reemplaza por la API; las pantallas solo
-  lo consumen vía `useAppData()`.
+- `src/context/AppDataContext.tsx` — los datos que consumen las pantallas, solo vía
+  `useAppData()`. Con sesión real (Google) las actividades, inscripciones, vínculos
+  familiares y la búsqueda de lugares vienen de la API (`usesApi`); las cuentas de
+  demostración usan datos locales (`data/seed.ts`). Perfil, asistencia, avisos, reseñas y
+  recomendaciones siguen siendo locales hasta que se migren; cuando un dato aún no existe
+  en el servidor, la pantalla no finge guardarlo (ver cancelar eventos).
 - `src/components/` — componentes compartidos del design system.
 - `src/screens/` — una pantalla por flujo, igual para los tres roles.
 - `src/navigation/` — un único stack raíz + pestañas inferiores.

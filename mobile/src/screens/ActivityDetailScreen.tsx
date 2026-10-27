@@ -14,11 +14,12 @@ import { Section } from '../components/Section'
 import { StarRating } from '../components/StarRating'
 import { useAppData, useMyProfile } from '../context/AppDataContext'
 import { useSessionUser } from '../context/RoleContext'
-import { attendanceKey, type Account } from '../data/types'
+import { attendanceKey } from '../data/types'
 import { getZone } from '../data/zones'
 import type { RootStackParamList } from '../navigation/types'
 import { useCan } from '../permissions/permissions'
 import { useRoleStyles } from '../theme/useRoleStyles'
+import { isFull, spotsLeft as spotsLeftOf } from '../utils/capacity'
 import { addDays, dayDiff, endsAt, formatLongDate, formatTime, friendlyDate, isPast } from '../utils/dates'
 import { distanceKm, formatDistance } from '../utils/geo'
 import { directionsUrl, googleCalendarUrl, openExternal, telUrl } from '../utils/links'
@@ -28,7 +29,7 @@ import { createStyles } from './ActivityDetailScreen.styles'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ActivityDetail'>
 
-interface Feedback {
+interface ActionResult {
   ok: boolean
   message: string
 }
@@ -39,9 +40,11 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
     accounts,
     activities,
     enrollments,
+    attendeesCount,
     attendance,
     links,
     reviews,
+    usesApi,
     enroll,
     unenroll,
     confirmAttendance,
@@ -51,7 +54,8 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
   const profile = useMyProfile()
   const styles = useRoleStyles(createStyles)
   const [showFamily, setShowFamily] = useState(false)
-  const [feedback, setFeedback] = useState<Feedback | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [actionError, setActionError] = useState('')
   const [speaking, setSpeaking] = useState(false)
   const [confirm, setConfirm] = useState<'unenroll' | 'cancel' | null>(null)
 
@@ -81,27 +85,37 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
   const enrolled = attendees.includes(user.id)
   const isOwner = activity.createdBy === user.id
   const organizer = accounts.find((a) => a.id === activity.createdBy)
+  const organizerName = activity.createdByName ?? organizer?.name
   const activityReviews = reviews.filter((r) => r.activityId === activity.id)
   const hasReviewed = activityReviews.some((r) => r.userId === user.id)
   const average = activityReviews.length ? activityReviews.reduce((sum, r) => sum + r.rating, 0) / activityReviews.length : 0
   const myAttendance = attendance[attendanceKey(activity.id, user.id)]
-  const spotsLeft = activity.capacity === null ? null : Math.max(0, activity.capacity - attendees.length)
-  const full = spotsLeft === 0
+  // `attendees` son las inscripciones visibles (las propias y las de familiares); el total sale de la API.
+  const count = attendeesCount(activity.id)
+  const spotsLeft = spotsLeftOf(activity, count)
+  const full = isFull(activity, count)
   const origin = getZone(profile.zoneId)
   const distance = origin ? distanceKm(origin, activity) : null
   const familyMembers = links
     .filter((l) => l.caregiverId === user.id && l.status === 'active')
-    .map((l) => accounts.find((a) => a.id === l.elderId))
-    .filter((a): a is Account => !!a)
+    .map((l) => ({ id: l.elderId, name: l.elderName }))
 
   const start = new Date(activity.startsAt)
-  const end = endsAt(activity.startsAt, activity.durationMinutes)
-  const schedule = `${friendlyDate(activity.startsAt)} a ${formatTime(end)}`
+  // Las actividades de la API todavía no traen duración: solo se muestra la hora de inicio.
+  const schedule =
+    activity.durationMinutes !== undefined
+      ? `${friendlyDate(activity.startsAt)} a ${formatTime(endsAt(activity.startsAt, activity.durationMinutes))}`
+      : friendlyDate(activity.startsAt)
   const reminderOn = dayDiff(activity.startsAt) >= 2 ? formatLongDate(addDays(start, -1)) : null
 
-  function handleEnroll(userId: string) {
-    const result = enroll(activity!.id, userId)
-    setFeedback(result.ok ? null : result)
+  // Ejecuta una acción de inscripción, destacado o cancelación y muestra el error del servidor si falla.
+  async function run(action: () => Promise<ActionResult>) {
+    if (busy) return
+    setBusy(true)
+    setActionError('')
+    const result = await action()
+    setBusy(false)
+    if (!result.ok) setActionError(result.message)
   }
 
   function toggleSpeech() {
@@ -134,10 +148,13 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
         <MetaRow icon="pricetag-outline" text={activity.category} />
         <MetaRow icon="calendar-outline" text={schedule} />
         <MetaRow icon="location-outline" text={activity.place} />
+        {activity.placeAddress && activity.placeAddress !== activity.place ? (
+          <AppText variant="caption">{activity.placeAddress}</AppText>
+        ) : null}
         {distance !== null && <MetaRow icon="navigate-outline" text={`${formatDistance(distance)} de tu zona`} />}
-        <MetaRow icon="people-outline" text={attendeesLabel(attendees.length)} />
+        <MetaRow icon="people-outline" text={attendeesLabel(count)} />
         {activity.capacity !== null && <MetaRow icon="ticket-outline" text={`Cupo: ${activity.capacity} personas`} />}
-        {organizer && <MetaRow icon="business-outline" text={`Organiza: ${organizer.name}`} />}
+        {organizerName ? <MetaRow icon="business-outline" text={`Organiza: ${organizerName}`} /> : null}
       </View>
 
       <AppText>{activity.description}</AppText>
@@ -161,7 +178,7 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
       <View style={styles.actions}>
         {cancelled && <Banner tone="error">Esta actividad fue cancelada por la organización.</Banner>}
 
-        {feedback && !feedback.ok && <Banner tone="error">{feedback.message}</Banner>}
+        {actionError ? <Banner tone="error">{actionError}</Banner> : null}
 
         {!past && !cancelled && canRegisterSelf && (
           <>
@@ -177,7 +194,7 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
             ) : full ? (
               <Banner tone="info">El cupo está lleno. Prueba con otra actividad parecida.</Banner>
             ) : (
-              <Button icon="add-circle-outline" label="Inscribirme" onPress={() => handleEnroll(user.id)} />
+              <Button icon="add-circle-outline" label="Inscribirme" disabled={busy} onPress={() => run(() => enroll(activity.id, user.id))} />
             )}
           </>
         )}
@@ -201,8 +218,9 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
                     <PersonRow key={member.id} name={member.name} badge={done ? { label: 'Inscrito', tone: 'success' } : undefined}>
                       <Button
                         variant={done ? 'outline' : 'primary'}
-                        label={done ? 'Quitar inscripción' : 'Inscribir'}
-                        onPress={() => (done ? unenroll(activity.id, member.id) : handleEnroll(member.id))}
+                        label={done ? 'Quitar inscripción' : full ? 'Cupo lleno' : 'Inscribir'}
+                        disabled={busy || (!done && full)}
+                        onPress={() => run(() => (done ? unenroll(activity.id, member.id) : enroll(activity.id, member.id)))}
                       />
                     </PersonRow>
                   )
@@ -225,7 +243,7 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
         {isOwner && canManageAttendees && (
           <Button
             icon="list-outline"
-            label={`Ver inscritos (${attendees.length})`}
+            label={`Ver inscritos (${count})`}
             onPress={() => navigation.navigate('Attendees', { activityId: activity.id })}
           />
         )}
@@ -235,11 +253,12 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
             variant="secondary"
             icon="star-outline"
             label={activity.featured ? 'Quitar destacado' : 'Destacar publicación'}
-            onPress={() => toggleFeatured(activity.id)}
+            disabled={busy}
+            onPress={() => run(() => toggleFeatured(activity.id))}
           />
         )}
 
-        {isOwner && canCancelEvent && !past && !cancelled && (
+        {isOwner && canCancelEvent && !usesApi && !past && !cancelled && (
           <Button variant="outline" icon="ban-outline" label="Cancelar este evento" onPress={() => setConfirm('cancel')} />
         )}
 
@@ -284,21 +303,21 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
         cancelLabel="No, mantenerla"
         destructive
         onConfirm={() => {
-          unenroll(activity.id, user.id)
           setConfirm(null)
+          run(() => unenroll(activity.id, user.id))
         }}
         onCancel={() => setConfirm(null)}
       />
       <ConfirmDialog
         visible={confirm === 'cancel'}
         title="¿Cancelar el evento?"
-        message={`Se avisará a las ${attendees.length} personas inscritas en ${activity.title}. Esta acción no se puede deshacer.`}
+        message={`Se avisará a las ${count} personas inscritas en ${activity.title}. Esta acción no se puede deshacer.`}
         confirmLabel="Sí, cancelar evento"
         cancelLabel="No, volver"
         destructive
         onConfirm={() => {
-          cancelActivity(activity.id)
           setConfirm(null)
+          run(() => cancelActivity(activity.id))
         }}
         onCancel={() => setConfirm(null)}
       />

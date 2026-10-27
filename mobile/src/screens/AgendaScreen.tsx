@@ -16,6 +16,7 @@ import { useAppNavigation } from '../navigation/useAppNavigation'
 import { useCan } from '../permissions/permissions'
 import { CREATE_EVENT_REPUTATION_THRESHOLD } from '../permissions/reputation'
 import { useRoleStyles } from '../theme/useRoleStyles'
+import { isOpen } from '../utils/capacity'
 import { dayKey, formatLongDate, isPast } from '../utils/dates'
 import { createStyles } from './AgendaScreen.styles'
 
@@ -28,7 +29,7 @@ const HISTORY_PREVIEW = 4
 export function AgendaScreen() {
   const navigation = useAppNavigation()
   const { user } = useSessionUser()
-  const { activities, enrollments, attendance, confirmAttendance } = useAppData()
+  const { activities, enrollments, attendeesCount, attendance, confirmAttendance } = useAppData()
   const canRegister = useCan('register_self')
   const canCreate = useCan('create_event')
   const canConfirm = useCan('confirm_attendance')
@@ -42,7 +43,7 @@ export function AgendaScreen() {
 
   const mine = activities.filter((a) => enrollments[a.id]?.includes(user.id))
   const upcoming = mine.filter((a) => !isPast(a.startsAt)).sort(byDate)
-  const past = mine.filter((a) => isPast(a.startsAt) && a.status === 'disponible')
+  const past = mine.filter((a) => isPast(a.startsAt) && isOpen(a))
   const toConfirm = past.filter((a) => attendance[attendanceKey(a.id, user.id)] === undefined).sort((a, b) => byDate(b, a))
   const history = past.filter((a) => attendance[attendanceKey(a.id, user.id)] !== undefined).sort((a, b) => byDate(b, a))
   // Primero lo que viene (de la más cercana a la más lejana) y después lo ya finalizado.
@@ -64,7 +65,7 @@ export function AgendaScreen() {
     <ActivityCard
       key={activity.id}
       activity={activity}
-      attendeesCount={enrollments[activity.id]?.length ?? 0}
+      attendeesCount={attendeesCount(activity.id)}
       badge={badge}
       onPress={() => navigation.navigate('ActivityDetail', { activityId: activity.id })}
     />

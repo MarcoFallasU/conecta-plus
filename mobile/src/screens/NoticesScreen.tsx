@@ -9,6 +9,7 @@ import { Section } from '../components/Section'
 import { useAppData } from '../context/AppDataContext'
 import { useSessionUser } from '../context/RoleContext'
 import { useRoleStyles } from '../theme/useRoleStyles'
+import { isOpen } from '../utils/capacity'
 import { addDays, dayDiff, formatActivityDate, formatLongDate, isPast } from '../utils/dates'
 import { deriveNotices } from '../utils/notices'
 import { createStyles } from './NoticesScreen.styles'
@@ -33,7 +34,7 @@ export function NoticesScreen() {
 
   // Recordatorios que ya están programados: un día antes de cada actividad inscrita.
   const scheduled = activities
-    .filter((a) => a.status === 'disponible' && !isPast(a.startsAt) && (enrollments[a.id] ?? []).includes(user.id))
+    .filter((a) => isOpen(a) && !isPast(a.startsAt) && (enrollments[a.id] ?? []).includes(user.id))
     .filter((a) => dayDiff(a.startsAt) >= 2)
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
 
