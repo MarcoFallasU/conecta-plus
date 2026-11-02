@@ -2,3 +2,6 @@ node_modules
 .env
 dist
 .claude/
+
+# Credenciales de Google que baja la consola: traen el secreto del cliente.
+client_secret_*.json
