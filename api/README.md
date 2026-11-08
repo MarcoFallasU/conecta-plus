@@ -105,6 +105,28 @@ Con `NODE_ENV=production` solo se aceptan los destinos `conectaplus://` y los de
 `APP_REDIRECT_ALLOWLIST`. El código de intercambio usado se recuerda en memoria: con más
 de una instancia de la API hay que guardarlo en la base de datos o en Redis.
 
+## Despliegue en Render (plan gratis)
+
+El archivo `render.yaml`, en la raíz del repositorio, describe el servicio. Para crearlo:
+
+1. Sube la rama a GitHub y entra a [Render](https://render.com) con tu cuenta de GitHub.
+2. **New → Blueprint**, elige este repositorio y la rama (por ejemplo `develop`).
+3. Render pide los valores secretos una sola vez, al crear el Blueprint: `TURSO_DATABASE_URL`,
+   `TURSO_AUTH_TOKEN` (conviene un token propio para producción: `turso db tokens create <base>`),
+   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `GOOGLE_REDIRECT_URI`
+   (`https://<servicio>.onrender.com/api/auth/google/callback`). `JWT_SECRET` lo genera Render.
+4. Cuando termine el deploy, abre `https://<servicio>.onrender.com/api/health`: debe responder
+   `{"status":"ok"}`. Si Render asignó una dirección distinta a la que pusiste en
+   `GOOGLE_REDIRECT_URI`, corrígela en *Environment* del servicio.
+5. Registra ese mismo callback en Google Cloud, en **URIs de redireccionamiento autorizados**.
+6. En la app, la API se indica con `EXPO_PUBLIC_API_URL=https://<servicio>.onrender.com/api`
+   (en `mobile/eas.json` para los builds).
+
+Con `NODE_ENV=production` la API solo acepta devolver a `conectaplus://`, así que la versión web
+en `localhost` no puede entrar con Google contra la API desplegada. El plan gratis se duerme tras
+15 minutos sin tráfico y despertarlo tarda alrededor de un minuto: abre `/api/health` antes de una
+demostración. Ese plan no tiene disco persistente, pero no importa: los datos viven en Turso.
+
 ## Problemas frecuentes
 
 | Lo que ves | Causa más probable |
