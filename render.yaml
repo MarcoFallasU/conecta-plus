@@ -3,7 +3,7 @@
 # Los valores secretos (sync: false) los pide Render una sola vez, al crear el Blueprint.
 services:
   - type: web
-    name: conecta-plus-api
+    name: conecta-plus-api-una
     runtime: node
     plan: free
     region: virginia
