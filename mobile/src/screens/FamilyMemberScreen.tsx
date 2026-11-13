@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { View } from 'react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { ActivityCard } from '../components/ActivityCard'
 import { AppText } from '../components/AppText'
+import { Banner } from '../components/Banner'
 import { Button } from '../components/Button'
 import { EmptyState } from '../components/EmptyState'
 import { PersonRow } from '../components/PersonRow'
@@ -23,6 +25,8 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
   const { activities, enrollments, attendeesCount, links, linksLoading, recommendations, recommend } = useAppData()
   const canRecommend = useCan('recommend_activity')
   const styles = useRoleStyles(createStyles)
+  const [sendingId, setSendingId] = useState<string | null>(null)
+  const [error, setError] = useState('')
 
   // El vínculo activo trae el nombre del adulto mayor (del servidor o de la demo).
   const link = user
@@ -49,11 +53,20 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
   const elderName = link.elderName
 
   // Con la API, `enrollments` solo trae las inscripciones del propio usuario y de sus familiares vinculados.
-  const upcoming = activities.filter((a) => !isPast(a.startsAt))
+  const upcoming = activities.filter((a) => !isPast(a.startsAt) && a.status !== 'cancelada')
   const elderActivities = upcoming.filter((a) => enrollments[a.id]?.includes(elderId)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
   const suggestions = upcoming.filter((a) => !enrollments[a.id]?.includes(elderId)).sort((a, b) => a.startsAt.localeCompare(b.startsAt))
   const alreadyRecommended = (activityId: string) =>
     recommendations.some((r) => r.activityId === activityId && r.fromUserId === user.id && r.toUserId === elderId)
+
+  async function handleRecommend(activityId: string) {
+    if (sendingId) return
+    setSendingId(activityId)
+    setError('')
+    const result = await recommend(activityId, user!.id, elderId)
+    setSendingId(null)
+    if (!result.ok) setError(result.message)
+  }
 
   return (
     <Screen>
@@ -75,11 +88,13 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
       </Section>
 
       <Section title="Recomendar actividad">
+        {error ? <Banner tone="error">{error}</Banner> : null}
         {suggestions.length === 0 ? (
           <AppText>No hay más actividades para recomendar por ahora.</AppText>
         ) : (
           suggestions.map((activity) => {
             const done = alreadyRecommended(activity.id)
+            const sending = sendingId === activity.id
 
             return (
               <View key={activity.id} style={styles.suggestion}>
@@ -88,9 +103,9 @@ export function FamilyMemberScreen({ navigation, route }: Props) {
                 <Button
                   variant={done ? 'outline' : 'secondary'}
                   icon={done ? 'checkmark-circle-outline' : 'heart-outline'}
-                  label={done ? 'Recomendada' : 'Recomendar'}
-                  disabled={done}
-                  onPress={() => recommend(activity.id, user.id, elderId)}
+                  label={done ? 'Recomendada' : sending ? 'Enviando…' : 'Recomendar'}
+                  disabled={done || sendingId !== null}
+                  onPress={() => handleRecommend(activity.id)}
                 />
               </View>
             )

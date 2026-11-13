@@ -5,6 +5,7 @@ import { AppText } from '../components/AppText'
 import { Badge } from '../components/Badge'
 import { Banner } from '../components/Banner'
 import { Button } from '../components/Button'
+import { Chip } from '../components/Chip'
 import { EmptyState } from '../components/EmptyState'
 import { MetaRow } from '../components/MetaRow'
 import { PersonRow } from '../components/PersonRow'
@@ -27,14 +28,21 @@ interface ActionResult {
   message: string
 }
 
+// Destacar un evento cuesta $1 por día (pago simulado). Debe coincidir con la API.
+const FEATURE_PRICE_PER_DAY = 1
+const FEATURE_DAY_OPTIONS = [1, 3, 7, 14, 30]
+
+const daysLabel = (days: number) => `${days} ${days === 1 ? 'día' : 'días'}`
+
 export function ActivityDetailScreen({ navigation, route }: Props) {
   const { user } = useSessionUser()
-  const { accounts, activities, enrollments, links, reviews, attendeesCount, enroll, unenroll, toggleFeatured } =
+  const { accounts, activities, enrollments, links, reviews, attendeesCount, enroll, unenroll, featureActivity } =
     useAppData()
   const styles = useRoleStyles(createStyles)
   const [showFamily, setShowFamily] = useState(false)
   const [busy, setBusy] = useState(false)
   const [actionError, setActionError] = useState('')
+  const [featureDays, setFeatureDays] = useState(3)
 
   const canRegisterSelf = useCan('register_self')
   const canRegisterOthers = useCan('register_others')
@@ -76,6 +84,7 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
     .map((l) => ({ id: l.elderId, name: l.elderName }))
   const hasCoordinates = activity.lat !== undefined && activity.lng !== undefined
   const capacityText = activity.capacity ? ` · cupo de ${activity.capacity}` : ''
+  const featuredUntil = activity.featured && activity.featuredUntil ? activity.featuredUntil : null
 
   function openMap() {
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${activity!.lat},${activity!.lng}`)
@@ -161,16 +170,6 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
           />
         )}
 
-        {isOwner && canFeature && !past && (
-          <Button
-            variant="secondary"
-            icon="star-outline"
-            label={activity.featured ? 'Quitar destacado' : 'Destacar publicación'}
-            disabled={busy}
-            onPress={() => run(() => toggleFeatured(activity.id))}
-          />
-        )}
-
         {past &&
           canReview &&
           enrolled &&
@@ -184,6 +183,26 @@ export function ActivityDetailScreen({ navigation, route }: Props) {
             />
           ))}
       </View>
+
+      {isOwner && canFeature && !past && (
+        <Section title="Destacar publicación">
+          <AppText>{`Los eventos destacados aparecen primero en Explorar. Cuesta $${FEATURE_PRICE_PER_DAY} por día.`}</AppText>
+          {featuredUntil ? <Banner tone="success">{`Destacado hasta ${formatActivityDate(featuredUntil)}`}</Banner> : null}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {FEATURE_DAY_OPTIONS.map((days) => (
+              <Chip key={days} label={daysLabel(days)} selected={featureDays === days} onPress={() => setFeatureDays(days)} />
+            ))}
+          </View>
+          <Banner tone="info">Pago simulado: por ahora no se cobra nada real.</Banner>
+          <Button
+            variant="secondary"
+            icon="star-outline"
+            label={`${featuredUntil ? 'Extender' : 'Destacar'} por ${daysLabel(featureDays)} · $${featureDays * FEATURE_PRICE_PER_DAY}`}
+            disabled={busy}
+            onPress={() => run(() => featureActivity(activity.id, featureDays))}
+          />
+        </Section>
+      )}
 
       <Section title={activityReviews.length ? `Reseñas (${average.toFixed(1)} de 5)` : 'Reseñas'}>
         {activityReviews.length === 0 ? (

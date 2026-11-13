@@ -75,6 +75,8 @@ interface ActivitiesResponse {
   enrollments: Record<string, string[]>
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
 // 'api' = sesión real con token; 'demo' = cuenta de demostración local.
 type SessionSource = 'api' | 'demo' | null
 
@@ -101,13 +103,13 @@ interface AppDataValue {
   enroll: (activityId: string, userId: string) => Promise<ActionResult>
   unenroll: (activityId: string, userId: string) => Promise<ActionResult>
   createActivity: (input: NewActivity) => Promise<CreateResult>
-  toggleFeatured: (activityId: string) => Promise<ActionResult>
+  featureActivity: (activityId: string, days: number) => Promise<ActionResult>
   searchPlaces: (query: string) => Promise<PlaceResult[]>
   loadAttendees: (activityId: string) => Promise<Attendee[]>
   requestLink: (caregiverId: string, elderEmail: string) => Promise<ActionResult>
   respondLink: (linkId: string, accept: boolean) => Promise<ActionResult>
   removeLink: (linkId: string) => Promise<ActionResult>
-  recommend: (activityId: string, fromUserId: string, toUserId: string) => void
+  recommend: (activityId: string, fromUserId: string, toUserId: string) => Promise<ActionResult>
   addReview: (input: { activityId: string; userId: string; rating: number; comment: string }) => void
 }
 
@@ -129,18 +131,19 @@ function errorMessage(e: unknown, fallback: string) {
   return e instanceof Error ? e.message : fallback
 }
 
-// Las imágenes que sube un organizador las sirve la API y llegan como ruta relativa ("/api/activities/…/image").
+// Las imágenes que sube un organizador llegan como URL de Cloudinary; si alguna viniera como ruta
+// relativa del servidor ("/api/..."), se completa con la dirección de la API.
 function normalizeActivity(activity: Activity): Activity {
   return activity.imageUrl.startsWith('/') ? { ...activity, imageUrl: `${API_ORIGIN}${activity.imageUrl}` } : activity
 }
 
-// Autenticación, vínculos y actividades: usan la API real (/auth/*, /links/*, /activities/*, /geocode).
-// Las reseñas y recomendaciones siguen siendo un mock hasta que se migren a la API.
+// Autenticación, vínculos, actividades y recomendaciones: usan la API real
+// (/auth/*, /links/*, /activities/*, /geocode, /recommendations).
+// Las reseñas siguen siendo un mock hasta que se migren a la API.
 // Las cuentas de demostración conservan sus datos locales y no llaman al servidor.
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const { user, setUser } = useSessionUser()
   const [accounts, setAccounts] = useState(SEED_ACCOUNTS)
-  const [recommendations, setRecommendations] = useState(SEED_RECOMMENDATIONS)
   const [reviews, setReviews] = useState(SEED_REVIEWS)
   const [restoring, setRestoring] = useState(true)
 
@@ -158,8 +161,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [activitiesLoading, setActivitiesLoading] = useState(false)
   const [activitiesError, setActivitiesError] = useState<string | null>(null)
 
+  const [demoRecommendations, setDemoRecommendations] = useState(SEED_RECOMMENDATIONS)
+  const [apiRecommendations, setApiRecommendations] = useState<Recommendation[]>([])
+
   const activities = source === 'api' ? apiActivities : demoActivities
   const enrollments = source === 'api' ? apiEnrollments : demoEnrollments
+  const recommendations = source === 'api' ? apiRecommendations : demoRecommendations
 
   // Demo: se completan los nombres desde las cuentas. API: ya vienen del servidor.
   const links = useMemo<FamilyLink[]>(() => {
@@ -223,6 +230,27 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       })
       .finally(() => {
         if (!cancelled) setLinksLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, user?.id])
+
+  // Carga las recomendaciones enviadas y recibidas (solo cuidadores y adultos mayores las usan).
+  useEffect(() => {
+    if (source !== 'api' || !can(user, 'view_family')) {
+      setApiRecommendations([])
+      return
+    }
+    let cancelled = false
+    api
+      .get<{ recommendations: Recommendation[] }>('/recommendations')
+      .then((data) => {
+        if (!cancelled) setApiRecommendations(data.recommendations)
+      })
+      .catch(() => {
+        if (!cancelled) setApiRecommendations([])
       })
     return () => {
       cancelled = true
@@ -440,23 +468,29 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: '', activity }
   }
 
-  async function toggleFeatured(activityId: string): Promise<ActionResult> {
+  // Destacar por N días ($1 por día, pago simulado). Con la API, el servidor registra la compra
+  // y suma los días si el evento ya estaba destacado.
+  async function featureActivity(activityId: string, days: number): Promise<ActionResult> {
     if (source === 'api') {
-      const current = apiActivities.find((a) => a.id === activityId)
-      if (!current) return { ok: false, message: 'Actividad no encontrada.' }
       try {
         const { activity } = await api.post<{ activity: Activity }>(
-          `/activities/${encodeURIComponent(activityId)}/featured`,
-          { featured: !current.featured },
+          `/activities/${encodeURIComponent(activityId)}/feature`,
+          { days },
         )
         const updated = normalizeActivity(activity)
         setApiActivities((prev) => prev.map((a) => (a.id === activityId ? updated : a)))
         return { ok: true, message: '' }
       } catch (e) {
-        return { ok: false, message: errorMessage(e, 'No se pudo cambiar el destacado.') }
+        return { ok: false, message: errorMessage(e, 'No se pudo destacar el evento.') }
       }
     }
-    setDemoActivities((prev) => prev.map((a) => (a.id === activityId ? { ...a, featured: !a.featured } : a)))
+    setDemoActivities((prev) =>
+      prev.map((a) => {
+        if (a.id !== activityId) return a
+        const base = a.featuredUntil && new Date(a.featuredUntil).getTime() > Date.now() ? new Date(a.featuredUntil).getTime() : Date.now()
+        return { ...a, featured: true, featuredUntil: new Date(base + days * DAY_MS).toISOString() }
+      }),
+    )
     return { ok: true, message: '' }
   }
 
@@ -534,12 +568,26 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: '' }
   }
 
-  function recommend(activityId: string, fromUserId: string, toUserId: string) {
-    setRecommendations((prev) =>
+  // En modo API el fromUserId se ignora: el servidor usa el usuario del token.
+  async function recommend(activityId: string, fromUserId: string, toUserId: string): Promise<ActionResult> {
+    if (source === 'api') {
+      try {
+        const { recommendation } = await api.post<{ recommendation: Recommendation }>('/recommendations', {
+          activityId,
+          toUserId,
+        })
+        setApiRecommendations((prev) => [recommendation, ...prev])
+        return { ok: true, message: '' }
+      } catch (e) {
+        return { ok: false, message: errorMessage(e, 'No se pudo enviar la recomendación.') }
+      }
+    }
+    setDemoRecommendations((prev) =>
       prev.some((r) => r.activityId === activityId && r.fromUserId === fromUserId && r.toUserId === toUserId)
         ? prev
         : [...prev, { id: `r-${Date.now()}`, activityId, fromUserId, toUserId }],
     )
+    return { ok: true, message: '' }
   }
 
   function addReview(input: { activityId: string; userId: string; rating: number; comment: string }) {
@@ -575,7 +623,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         enroll,
         unenroll,
         createActivity,
-        toggleFeatured,
+        featureActivity,
         searchPlaces,
         loadAttendees,
         requestLink,

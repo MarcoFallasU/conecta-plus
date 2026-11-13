@@ -15,6 +15,7 @@ export interface Activity {
   imageUrl: string
   createdBy: string
   featured: boolean
+  featuredUntil?: string | null
   placeAddress?: string
   lat?: number
   lng?: number
@@ -54,11 +55,13 @@ export interface FamilyLink extends FamilyLinkBase {
   elderName: string
 }
 
+// `fromName` solo lo trae la API; con cuentas demo el nombre se busca en las cuentas de ejemplo.
 export interface Recommendation {
   id: string
   activityId: string
   fromUserId: string
   toUserId: string
+  fromName?: string
 }
 
 export interface Review {

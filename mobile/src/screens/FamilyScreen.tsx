@@ -27,6 +27,7 @@ export function FamilyScreen() {
   const {
     accounts,
     activities,
+    enrollments,
     links,
     linksLoading,
     linksError,
@@ -47,14 +48,18 @@ export function FamilyScreen() {
   if (!user) return null
 
   // Los nombres de las personas vinculadas vienen del servidor (cuentas reales) o de la demo.
-  // Las recomendaciones siguen siendo de ejemplo, así que ahí se busca en las cuentas del seed.
+  // En las recomendaciones, el nombre lo trae la API; con cuentas demo se busca en las cuentas del seed.
   const nameOfAccount = (id: string) => accounts.find((a) => a.id === id)?.name ?? 'Usuario'
   const accompanied = links.filter((l) => l.caregiverId === user.id)
   const requests = links.filter((l) => l.elderId === user.id && l.status === 'pending')
   const family = links.filter((l) => l.elderId === user.id && l.status === 'active')
+  // Se muestran las recomendaciones recibidas de actividades futuras en las que todavía no estás inscrito.
   const received = recommendations.flatMap((recommendation) => {
     const activity = activities.find((a) => a.id === recommendation.activityId)
-    return recommendation.toUserId === user.id && activity && !isPast(activity.startsAt) ? [{ recommendation, activity }] : []
+    const enrolled = activity ? enrollments[activity.id]?.includes(user.id) : false
+    return recommendation.toUserId === user.id && activity && !isPast(activity.startsAt) && !enrolled
+      ? [{ recommendation, activity }]
+      : []
   })
 
   async function handleSendRequest() {
@@ -177,7 +182,7 @@ export function FamilyScreen() {
               {received.map(({ recommendation, activity }) => (
                 <PersonRow
                   key={recommendation.id}
-                  name={nameOfAccount(recommendation.fromUserId)}
+                  name={recommendation.fromName || nameOfAccount(recommendation.fromUserId)}
                   subtitle={`Te recomendó ${activity.title} · ${formatActivityDate(activity.startsAt)}`}
                 >
                   <Button
