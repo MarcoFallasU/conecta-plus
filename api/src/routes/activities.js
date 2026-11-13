@@ -17,6 +17,10 @@ const CREATE_EVENT_REPUTATION_THRESHOLD = 50
 const HISTORY_DAYS = 90
 // Imagen enviada en base64: ~7 millones de caracteres ≈ 5 MB de archivo.
 const MAX_IMAGE_BASE64 = 7_000_000
+// Destacar un evento cuesta $1 por día (pago simulado: no se cobra nada real).
+const FEATURE_PRICE_USD_PER_DAY = 1
+const MAX_FEATURE_DAYS = 30
+const DAY_MS = 24 * 60 * 60 * 1000
 
 // Express 4 no captura errores de funciones async; este envoltorio los convierte en 500.
 const handle = (fn) => (req, res) =>
@@ -60,7 +64,9 @@ async function uploadImage(base64, activityId) {
 }
 
 // Convierte una fila de la base de datos a la forma que usa el frontend.
+// El destacado vence solo: si `featuredUntil` ya pasó, el evento deja de aparecer como destacado.
 function toActivity(a) {
+  const featuredActive = Boolean(a.featured && a.featuredUntil && a.featuredUntil.getTime() > Date.now())
   return {
     id: a.id,
     title: a.title,
@@ -77,7 +83,8 @@ function toActivity(a) {
     capacity: a.capacity,
     attendeesCount: a.enrolledCount,
     status: a.status,
-    featured: a.featured,
+    featured: featuredActive,
+    featuredUntil: featuredActive ? a.featuredUntil.toISOString() : null,
   }
 }
 
@@ -91,7 +98,7 @@ async function hasActiveLink(caregiverId, elderId) {
 router.get(
   '/',
   handle(async (req, res) => {
-    const since = new Date(Date.now() - HISTORY_DAYS * 24 * 60 * 60 * 1000)
+    const since = new Date(Date.now() - HISTORY_DAYS * DAY_MS)
     const activities = await prisma.activity.findMany({
       where: { startsAt: { gte: since }, status: { not: 'cancelada' } },
       orderBy: { startsAt: 'asc' },
@@ -212,25 +219,55 @@ router.post(
   }),
 )
 
-// Destacar o quitar el destacado: solo la organización dueña del evento.
+// Destacar un evento por N días ($1 por día, pago simulado): solo la organización dueña del evento.
+// Si ya estaba destacado, los días se suman a partir de la fecha en que vence el destacado actual.
 router.post(
-  '/:id/featured',
+  '/:id/feature',
   handle(async (req, res) => {
     if (req.user.role !== 'empresa') {
       return res.status(403).json({ error: 'Solo una organización puede destacar eventos' })
     }
-    if (typeof req.body?.featured !== 'boolean') {
-      return res.status(400).json({ error: 'Indica si el evento queda destacado o no' })
+    const days = req.body?.days
+    if (!Number.isInteger(days) || days < 1 || days > MAX_FEATURE_DAYS) {
+      return res.status(400).json({ error: `Elige entre 1 y ${MAX_FEATURE_DAYS} días` })
     }
     const activity = await prisma.activity.findUnique({ where: { id: req.params.id } })
     if (!activity || activity.createdBy !== req.user.id) {
       return res.status(404).json({ error: 'Actividad no encontrada' })
     }
-    const updated = await prisma.activity.update({
-      where: { id: activity.id },
-      data: { featured: req.body.featured },
+    if (activity.status === 'cancelada' || activity.startsAt.getTime() <= Date.now()) {
+      return res.status(409).json({ error: 'No se puede destacar un evento que ya empezó o fue cancelado' })
+    }
+
+    const now = new Date()
+    const stillFeatured = activity.featured && activity.featuredUntil && activity.featuredUntil.getTime() > now.getTime()
+    const startsAt = stillFeatured ? activity.featuredUntil : now
+    const endsAt = new Date(startsAt.getTime() + days * DAY_MS)
+
+    const [purchase, updated] = await prisma.$transaction([
+      prisma.featuredPurchase.create({
+        data: {
+          activityId: activity.id,
+          orgId: req.user.id,
+          days,
+          amountUsd: days * FEATURE_PRICE_USD_PER_DAY,
+          startsAt,
+          endsAt,
+          status: 'simulado',
+        },
+      }),
+      prisma.activity.update({ where: { id: activity.id }, data: { featured: true, featuredUntil: endsAt } }),
+    ])
+    res.status(201).json({
+      activity: toActivity(updated),
+      purchase: {
+        id: purchase.id,
+        days: purchase.days,
+        amountUsd: purchase.amountUsd,
+        endsAt: purchase.endsAt.toISOString(),
+        status: purchase.status,
+      },
     })
-    res.json({ activity: toActivity(updated) })
   }),
 )
 

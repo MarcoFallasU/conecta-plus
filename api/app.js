@@ -5,7 +5,7 @@ const prisma = require('./src/prisma');
 
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN }));
-app.use(express.json());
+app.use(express.json({ limit: '8mb' }));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
@@ -13,6 +13,8 @@ app.use('/api/auth', require('./src/routes/auth'));
 app.use('/api/links', require('./src/routes/links'));
 app.use('/api/activities', require('./src/routes/activities'));
 app.use('/api/geocode', require('./src/routes/geocode'));
+app.use('/api/recommendations', require('./src/routes/recommendations'));
+
 app.get('/api/categories', async (req, res) => {
   try {
     const categories = await prisma.category.findMany({ orderBy: { order: 'asc' } });
